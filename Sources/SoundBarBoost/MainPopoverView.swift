@@ -1011,6 +1011,14 @@ public struct MainPopoverView: View {
                             .foregroundColor(viper.loadedPresetName != "NONE" ? TermTheme.cyan : TermTheme.dimText)
                             .lineLimit(1)
                         Spacer()
+                        if viper.loadedPresetName != "NONE" {
+                            Button("[CLEAR]") {
+                                viper.clearLoadedPreset()
+                            }
+                            .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                            .foregroundColor(TermTheme.red)
+                            .buttonStyle(PlainButtonStyle())
+                        }
                     }
                     HStack {
                         Text("KERNEL:")
@@ -1021,6 +1029,14 @@ public struct MainPopoverView: View {
                             .foregroundColor(viper.loadedKernelName != "NONE" ? TermTheme.amber : TermTheme.dimText)
                             .lineLimit(1)
                         Spacer()
+                        if viper.loadedKernelName != "NONE" {
+                            Button("[CLEAR]") {
+                                viper.clearLoadedKernel()
+                            }
+                            .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                            .foregroundColor(TermTheme.red)
+                            .buttonStyle(PlainButtonStyle())
+                        }
                     }
                 }
                 .padding(6)

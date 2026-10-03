@@ -7,22 +7,50 @@ import UniformTypeIdentifiers
 public class ViperDSPManager: ObservableObject {
     public static let shared = ViperDSPManager()
     
-    // MARK: - Master & Module Switches
-    @Published public var isViperEnabled: Bool = false
-    @Published public var isConvolverEnabled: Bool = false
-    @Published public var isViperBassEnabled: Bool = false
-    @Published public var isViperClarityEnabled: Bool = false
-    @Published public var isTubeSimulatorEnabled: Bool = false
+    private var isLoadingState: Bool = false
+    
+    // Directory in Application Support for persistent caching of active files
+    public var viperStorageDirectory: URL {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let dir = appSupport.appendingPathComponent("AuraSound/ViPER", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+    
+    // MARK: - Master & Module Switches (Auto-persisted)
+    @Published public var isViperEnabled: Bool = false {
+        didSet { saveState() }
+    }
+    @Published public var isConvolverEnabled: Bool = false {
+        didSet { saveState() }
+    }
+    @Published public var isViperBassEnabled: Bool = false {
+        didSet { saveState() }
+    }
+    @Published public var isViperClarityEnabled: Bool = false {
+        didSet { saveState() }
+    }
+    @Published public var isTubeSimulatorEnabled: Bool = false {
+        didSet { saveState() }
+    }
     
     // MARK: - Active File Names
     @Published public var loadedPresetName: String = "NONE"
     @Published public var loadedKernelName: String = "NONE"
     
-    // MARK: - Adjustable Parameters
-    @Published public var convolverWet: Float = 0.85
-    @Published public var viperBassGain: Float = 6.0 // dB (0 to 14)
-    @Published public var viperBassFreq: Float = 80.0 // Hz (40, 60, 80, 100)
-    @Published public var viperClarityGain: Float = 4.0 // dB (0 to 12)
+    // MARK: - Adjustable Parameters (Auto-persisted)
+    @Published public var convolverWet: Float = 0.85 {
+        didSet { saveState() }
+    }
+    @Published public var viperBassGain: Float = 6.0 { // dB (0 to 14)
+        didSet { saveState() }
+    }
+    @Published public var viperBassFreq: Float = 80.0 { // Hz (40, 60, 80, 100)
+        didSet { saveState() }
+    }
+    @Published public var viperClarityGain: Float = 4.0 { // dB (0 to 12)
+        didSet { saveState() }
+    }
     @Published public var statusMessage: String = "VIPER4ANDROID READY"
     
     // MARK: - Convolver IRS Impulse Response Kernel (Lock-free realtime audio access)
@@ -35,12 +63,94 @@ public class ViperDSPManager: ObservableObject {
     
     public init() {
         createDefaultDirectories()
+        loadState()
     }
     
     public func createDefaultDirectories() {
         let musicDir = FileManager.default.urls(for: .musicDirectory, in: .userDomainMask).first!
         let viperDir = musicDir.appendingPathComponent("AuraSound/ViPER")
         try? FileManager.default.createDirectory(at: viperDir, withIntermediateDirectories: true)
+    }
+    
+    // MARK: - Persistence (UserDefaults + App Support File Cache)
+    public func saveState() {
+        guard !isLoadingState else { return }
+        UserDefaults.standard.set(isViperEnabled, forKey: "Viper_IsEnabled")
+        UserDefaults.standard.set(isConvolverEnabled, forKey: "Viper_IsConvolverEnabled")
+        UserDefaults.standard.set(isViperBassEnabled, forKey: "Viper_IsBassEnabled")
+        UserDefaults.standard.set(isViperClarityEnabled, forKey: "Viper_IsClarityEnabled")
+        UserDefaults.standard.set(isTubeSimulatorEnabled, forKey: "Viper_IsTubeEnabled")
+        
+        UserDefaults.standard.set(convolverWet, forKey: "Viper_ConvolverWet")
+        UserDefaults.standard.set(viperBassGain, forKey: "Viper_BassGain")
+        UserDefaults.standard.set(viperBassFreq, forKey: "Viper_BassFreq")
+        UserDefaults.standard.set(viperClarityGain, forKey: "Viper_ClarityGain")
+    }
+    
+    public func loadState() {
+        isLoadingState = true
+        defer { isLoadingState = false }
+        
+        if let en = UserDefaults.standard.object(forKey: "Viper_IsEnabled") as? Bool {
+            self.isViperEnabled = en
+        }
+        if let conv = UserDefaults.standard.object(forKey: "Viper_IsConvolverEnabled") as? Bool {
+            self.isConvolverEnabled = conv
+        }
+        if let b = UserDefaults.standard.object(forKey: "Viper_IsBassEnabled") as? Bool {
+            self.isViperBassEnabled = b
+        }
+        if let c = UserDefaults.standard.object(forKey: "Viper_IsClarityEnabled") as? Bool {
+            self.isViperClarityEnabled = c
+        }
+        if let t = UserDefaults.standard.object(forKey: "Viper_IsTubeEnabled") as? Bool {
+            self.isTubeSimulatorEnabled = t
+        }
+        
+        if let w = UserDefaults.standard.object(forKey: "Viper_ConvolverWet") as? Float {
+            self.convolverWet = w
+        }
+        if let bg = UserDefaults.standard.object(forKey: "Viper_BassGain") as? Float {
+            self.viperBassGain = bg
+        }
+        if let bf = UserDefaults.standard.object(forKey: "Viper_BassFreq") as? Float {
+            self.viperBassFreq = bf
+        }
+        if let cg = UserDefaults.standard.object(forKey: "Viper_ClarityGain") as? Float {
+            self.viperClarityGain = cg
+        }
+        
+        // 1. Restore Preset (.xml / .json)
+        if let presetPath = UserDefaults.standard.string(forKey: "Viper_PresetPath"),
+           FileManager.default.fileExists(atPath: presetPath) {
+            loadPresetFile(url: URL(fileURLWithPath: presetPath), shouldSave: false)
+        } else if let backupPreset = UserDefaults.standard.string(forKey: "Viper_PresetBackupPath"),
+                  FileManager.default.fileExists(atPath: backupPreset) {
+            loadPresetFile(url: URL(fileURLWithPath: backupPreset), shouldSave: false)
+            if let savedName = UserDefaults.standard.string(forKey: "Viper_PresetName") {
+                self.loadedPresetName = savedName.uppercased()
+            }
+        }
+        
+        // 2. Restore Kernel (.irs / .wav)
+        if let kernelPath = UserDefaults.standard.string(forKey: "Viper_KernelPath"),
+           FileManager.default.fileExists(atPath: kernelPath) {
+            loadKernelFile(url: URL(fileURLWithPath: kernelPath), shouldSave: false)
+        } else if let backupKernel = UserDefaults.standard.string(forKey: "Viper_KernelBackupPath"),
+                  FileManager.default.fileExists(atPath: backupKernel) {
+            loadKernelFile(url: URL(fileURLWithPath: backupKernel), shouldSave: false)
+            if let savedKernelName = UserDefaults.standard.string(forKey: "Viper_KernelName") {
+                self.loadedKernelName = savedKernelName.uppercased()
+            }
+        }
+        
+        // Re-apply saved master & convolver switches in case loading files altered them
+        if let en = UserDefaults.standard.object(forKey: "Viper_IsEnabled") as? Bool {
+            self.isViperEnabled = en
+        }
+        if let conv = UserDefaults.standard.object(forKey: "Viper_IsConvolverEnabled") as? Bool {
+            self.isConvolverEnabled = conv
+        }
     }
     
     // MARK: - File Dialogs (NSOpenPanel)
@@ -58,7 +168,7 @@ public class ViperDSPManager: ObservableObject {
             panel.allowedContentTypes = types
             
             if panel.runModal() == .OK, let url = panel.url {
-                self.loadPresetFile(url: url)
+                self.loadPresetFile(url: url, shouldSave: true)
             }
         }
     }
@@ -78,13 +188,13 @@ public class ViperDSPManager: ObservableObject {
             panel.allowedContentTypes = types
             
             if panel.runModal() == .OK, let url = panel.url {
-                self.loadKernelFile(url: url)
+                self.loadKernelFile(url: url, shouldSave: true)
             }
         }
     }
     
     // MARK: - Load Convolver Kernel (.IRS / .WAV)
-    public func loadKernelFile(url: URL) {
+    public func loadKernelFile(url: URL, shouldSave: Bool = true) {
         guard let data = try? Data(contentsOf: url) else {
             statusMessage = "ERROR: CANNOT READ KERNEL FILE"
             return
@@ -132,12 +242,55 @@ public class ViperDSPManager: ObservableObject {
         self.kernelLength = len
         kernelLock.unlock()
         
+        let kernelName = url.lastPathComponent
+        
+        if shouldSave {
+            // Backup to application support cache
+            let destURL = viperStorageDirectory.appendingPathComponent("active_kernel_\(kernelName)")
+            try? FileManager.default.removeItem(at: destURL)
+            try? FileManager.default.copyItem(at: url, to: destURL)
+            
+            UserDefaults.standard.set(url.path, forKey: "Viper_KernelPath")
+            UserDefaults.standard.set(destURL.path, forKey: "Viper_KernelBackupPath")
+            UserDefaults.standard.set(kernelName, forKey: "Viper_KernelName")
+            saveState()
+        }
+        
         DispatchQueue.main.async {
-            self.loadedKernelName = url.lastPathComponent.uppercased()
-            self.isConvolverEnabled = true
-            self.isViperEnabled = true
+            self.loadedKernelName = kernelName.uppercased()
+            if shouldSave {
+                self.isConvolverEnabled = true
+                self.isViperEnabled = true
+            }
             self.statusMessage = "LOADED KERNEL: \(self.loadedKernelName) (\(len) SAMPLES)"
         }
+    }
+    
+    public func clearLoadedKernel() {
+        kernelLock.lock()
+        kernelL.removeAll()
+        kernelR.removeAll()
+        kernelRevL.removeAll()
+        kernelRevR.removeAll()
+        kernelLength = 0
+        kernelLock.unlock()
+        
+        loadedKernelName = "NONE"
+        isConvolverEnabled = false
+        UserDefaults.standard.removeObject(forKey: "Viper_KernelPath")
+        UserDefaults.standard.removeObject(forKey: "Viper_KernelBackupPath")
+        UserDefaults.standard.removeObject(forKey: "Viper_KernelName")
+        saveState()
+        statusMessage = "KERNEL CLEARED"
+    }
+    
+    public func clearLoadedPreset() {
+        loadedPresetName = "NONE"
+        UserDefaults.standard.removeObject(forKey: "Viper_PresetPath")
+        UserDefaults.standard.removeObject(forKey: "Viper_PresetBackupPath")
+        UserDefaults.standard.removeObject(forKey: "Viper_PresetName")
+        saveState()
+        statusMessage = "PRESET CLEARED"
     }
     
     // MARK: - Native RIFF WAV/IRS Parser
@@ -239,7 +392,7 @@ public class ViperDSPManager: ObservableObject {
     }
     
     // MARK: - Load ViPER Preset (.XML / .JSON)
-    public func loadPresetFile(url: URL) {
+    public func loadPresetFile(url: URL, shouldSave: Bool = true) {
         guard let content = try? String(contentsOf: url, encoding: .utf8) else {
             statusMessage = "ERROR: CANNOT READ PRESET"
             return
@@ -350,6 +503,20 @@ public class ViperDSPManager: ObservableObject {
         self.isViperClarityEnabled = clarityOn
         self.viperClarityGain = clarityGainVal
         
+        let presetName = url.lastPathComponent
+        
+        if shouldSave {
+            // Backup to persistent application support cache
+            let destURL = viperStorageDirectory.appendingPathComponent("active_preset_\(presetName)")
+            try? FileManager.default.removeItem(at: destURL)
+            try? FileManager.default.copyItem(at: url, to: destURL)
+            
+            UserDefaults.standard.set(url.path, forKey: "Viper_PresetPath")
+            UserDefaults.standard.set(destURL.path, forKey: "Viper_PresetBackupPath")
+            UserDefaults.standard.set(presetName, forKey: "Viper_PresetName")
+            saveState()
+        }
+        
         // Try locating associated kernel file in same folder or ViPER presets dir
         if let kName = kernelRef, !kName.isEmpty, kName != "None" {
             let parentDir = url.deletingLastPathComponent()
@@ -357,17 +524,19 @@ public class ViperDSPManager: ObservableObject {
             let candidate2 = parentDir.appendingPathComponent("kernel/\(kName)")
             let candidate3 = parentDir.appendingPathComponent("Kernel/\(kName)")
             if FileManager.default.fileExists(atPath: candidate1.path) {
-                loadKernelFile(url: candidate1)
+                loadKernelFile(url: candidate1, shouldSave: shouldSave)
             } else if FileManager.default.fileExists(atPath: candidate2.path) {
-                loadKernelFile(url: candidate2)
+                loadKernelFile(url: candidate2, shouldSave: shouldSave)
             } else if FileManager.default.fileExists(atPath: candidate3.path) {
-                loadKernelFile(url: candidate3)
+                loadKernelFile(url: candidate3, shouldSave: shouldSave)
             }
         }
         
         DispatchQueue.main.async {
-            self.loadedPresetName = url.lastPathComponent.uppercased()
-            self.isViperEnabled = true
+            self.loadedPresetName = presetName.uppercased()
+            if shouldSave {
+                self.isViperEnabled = true
+            }
             self.statusMessage = "PRESET APPLIED: \(self.loadedPresetName)"
         }
     }
