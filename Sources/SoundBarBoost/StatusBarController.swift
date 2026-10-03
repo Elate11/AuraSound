@@ -95,10 +95,16 @@ public class StatusBarController: NSObject {
                 let mgr = AudioDeviceManager.shared
                 if keyCode == 0 { // NX_KEYTYPE_SOUND_UP
                     DispatchQueue.main.async {
+                        if mgr.isMuted {
+                            mgr.setMute(false)
+                        }
                         mgr.setVolume(mgr.masterVolume + 0.0625)
                     }
                 } else if keyCode == 1 { // NX_KEYTYPE_SOUND_DOWN
                     DispatchQueue.main.async {
+                        if mgr.isMuted {
+                            mgr.setMute(false)
+                        }
                         mgr.setVolume(mgr.masterVolume - 0.0625)
                     }
                 } else if keyCode == 7 { // NX_KEYTYPE_MUTE

@@ -963,6 +963,7 @@ public class RealAudioEngine: ObservableObject {
         let syncDelayMs = AudioDSPManager.shared.isSyncCompensationEnabled ? AudioDSPManager.shared.syncDelayMs : 0.0
         
         for devID in validIDs {
+            AudioDeviceManager.shared.ensureHardwareDeviceActive(deviceID: devID)
             let outRate = getDeviceSampleRate(deviceID: devID)
             let ratio = self.inSampleRate / max(8000.0, outRate)
             let isBT = isBluetoothDevice(deviceID: devID)
@@ -1061,8 +1062,9 @@ public class RealAudioEngine: ObservableObject {
                     }
                 }
                 
-                let master = AudioDeviceManager.shared.masterVolume
-                let (panL, panR) = AudioDeviceManager.shared.getSpatialPan(for: sink.deviceID)
+                let devMgr = AudioDeviceManager.shared
+                let master = devMgr.isMuted ? 0.0 : devMgr.masterVolume
+                let (panL, panR) = devMgr.getSpatialPan(for: sink.deviceID)
                 let volL = sink.volumeGain * master * panL
                 let volR = sink.volumeGain * master * panR
                 

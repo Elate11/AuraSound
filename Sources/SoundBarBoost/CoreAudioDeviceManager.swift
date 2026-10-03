@@ -195,6 +195,10 @@ public class AudioDeviceManager: ObservableObject {
             self.autoEstimateSyncDelay()
             self.setupVolumeSyncListeners()
             
+            for id in self.selectedDeviceIDs {
+                self.ensureHardwareDeviceActive(deviceID: id)
+            }
+            
             // Auto start audio routing pipeline as soon as devices are populated
             if !RealAudioEngine.shared.isRoutingActive && !self.selectedDeviceIDs.isEmpty {
                 _ = RealAudioEngine.shared.startRouting(toOutputDeviceIDs: self.selectedDeviceIDs)
@@ -241,7 +245,18 @@ public class AudioDeviceManager: ObservableObject {
             &defaultDevAddress,
             DispatchQueue.main
         ) { [weak self] _, _ in
-            self?.refreshDevices()
+            guard let self = self else { return }
+            self.refreshDevices()
+            
+            // If AuraSound routing is active, verify default output device remains BlackHole
+            if RealAudioEngine.shared.isRoutingActive {
+                if let bhID = RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole") {
+                    let currentDef = self.getDefaultOutputDeviceID()
+                    if currentDef != bhID {
+                        RealAudioEngine.shared.setSystemDefaultOutputDevice(deviceID: bhID)
+                    }
+                }
+            }
         }
         
         setupBlackHoleVolumeListener()
@@ -322,6 +337,9 @@ public class AudioDeviceManager: ObservableObject {
     public func setVolume(_ volume: Float, syncToBlackHole: Bool = true) {
         let clamped = max(0.0, min(1.0, volume))
         masterVolume = clamped
+        if isMuted && clamped > 0.0 {
+            isMuted = false
+        }
         isUpdatingVolumeInternally = true
         defer { isUpdatingVolumeInternally = false }
         
@@ -370,7 +388,26 @@ public class AudioDeviceManager: ObservableObject {
         return (panL: max(0.2, min(1.0, panL)), panR: max(0.2, min(1.0, panR)))
     }
     
-    private func setDeviceVolume(deviceID: AudioObjectID, volume: Float) {
+    public func ensureHardwareDeviceActive(deviceID: AudioObjectID) {
+        var zero: UInt32 = 0
+        for channel: UInt32 in [kAudioObjectPropertyElementMain, 0, 1, 2] {
+            var muteAddr = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyMute,
+                mScope: kAudioDevicePropertyScopeOutput,
+                mElement: channel
+            )
+            if AudioObjectHasProperty(deviceID, &muteAddr) {
+                AudioObjectSetPropertyData(deviceID, &muteAddr, 0, nil, UInt32(MemoryLayout<UInt32>.size), &zero)
+            }
+        }
+        
+        let vol = getDeviceVolume(deviceID: deviceID)
+        if vol <= 0.05 {
+            setDeviceVolume(deviceID: deviceID, volume: 0.85)
+        }
+    }
+    
+    public func setDeviceVolume(deviceID: AudioObjectID, volume: Float) {
         var vol = volume
         for channel: UInt32 in [kAudioObjectPropertyElementMain, 0, 1, 2] {
             var chanAddress = AudioObjectPropertyAddress(
@@ -387,17 +424,24 @@ public class AudioDeviceManager: ObservableObject {
     
     public func setMute(_ mute: Bool) {
         isMuted = mute
-        var muteVal: UInt32 = mute ? 1 : 0
-        for devID in selectedDeviceIDs {
-            var propertyAddress = AudioObjectPropertyAddress(
-                mSelector: kAudioDevicePropertyMute,
-                mScope: kAudioDevicePropertyScopeOutput,
-                mElement: kAudioObjectPropertyElementMain
-            )
-            if AudioObjectHasProperty(devID, &propertyAddress) {
-                let size = UInt32(MemoryLayout<UInt32>.size)
-                AudioObjectSetPropertyData(devID, &propertyAddress, 0, nil, size, &muteVal)
+        let muteVal: UInt32 = mute ? 1 : 0
+        if let bhID = RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole") {
+            for channel: UInt32 in [kAudioObjectPropertyElementMain, 0, 1, 2] {
+                var addr = AudioObjectPropertyAddress(
+                    mSelector: kAudioDevicePropertyMute,
+                    mScope: kAudioDevicePropertyScopeOutput,
+                    mElement: channel
+                )
+                if AudioObjectHasProperty(bhID, &addr) {
+                    var m = muteVal
+                    AudioObjectSetPropertyData(bhID, &addr, 0, nil, UInt32(MemoryLayout<UInt32>.size), &m)
+                }
             }
+        }
+        
+        // Physical devices are unmuted at hardware level so RealAudioEngine DSP controls volume directly
+        for devID in selectedDeviceIDs {
+            ensureHardwareDeviceActive(deviceID: devID)
         }
     }
     
