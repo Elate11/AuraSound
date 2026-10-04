@@ -1,0 +1,966 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 47;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		19FE742AEBE30B21C4CF9285 /* BGM_Control.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19FE7BC3396C4E50D21E1BC8 /* BGM_Control.cpp */; };
+		19FE761291BF07AEA278F25C /* BGM_MuteControl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19FE7E6DC2A1B61211D74782 /* BGM_MuteControl.cpp */; };
+		19FE766482B57D852CCF6F0A /* BGM_MuteControl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19FE7E6DC2A1B61211D74782 /* BGM_MuteControl.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_MuteControl.cpp"; }; };
+		19FE77D40F15EA060B462D83 /* BGM_Control.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19FE7BC3396C4E50D21E1BC8 /* BGM_Control.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_Control.cpp"; }; };
+		1C0CB6B91C642C600084C15A /* BGM_Client.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C0CB6B01C642C600084C15A /* BGM_Client.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_Client.cpp"; }; };
+		1C0CB6BA1C642C600084C15A /* BGM_ClientMap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C0CB6B21C642C600084C15A /* BGM_ClientMap.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_ClientMap.cpp"; }; };
+		1C0CB6BB1C642C600084C15A /* BGM_Clients.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C0CB6B41C642C600084C15A /* BGM_Clients.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_Clients.cpp"; }; };
+		1C30A69F1C1E98F000C05AA5 /* CAMutex.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B3841BBCEFE8000E2DD1 /* CAMutex.cpp */; };
+		1C38210E1C4A163A00A0C8C6 /* BGM_TaskQueue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C38210C1C4A163A00A0C8C6 /* BGM_TaskQueue.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_TaskQueue.cpp"; }; };
+		1C3DB4871BE063C500EC8160 /* BGM_DeviceTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1C3DB4861BE063C500EC8160 /* BGM_DeviceTests.mm */; };
+		1C6181A72388FC8A0068C4D3 /* CARingBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C6181A52388FC8A0068C4D3 /* CARingBuffer.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=libPublicUtility-CARingBuffer.cpp"; }; };
+		1C7010751F05ED5100D8CCDC /* BGM_AudibleState.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C7010731F05ED5100D8CCDC /* BGM_AudibleState.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_AudibleState.cpp"; }; };
+		1C7010761F05ED5100D8CCDC /* BGM_AudibleState.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C7010731F05ED5100D8CCDC /* BGM_AudibleState.cpp */; };
+		1C7010791F07A0BA00D8CCDC /* BGM_VolumeControl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C7010771F07A0BA00D8CCDC /* BGM_VolumeControl.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_VolumeControl.cpp"; }; };
+		1C70107A1F07A0BA00D8CCDC /* BGM_VolumeControl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C7010771F07A0BA00D8CCDC /* BGM_VolumeControl.cpp */; };
+		1C780FEF1FEE78E800497FAD /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1C780FEE1FEE78E800497FAD /* Accelerate.framework */; };
+		1C780FF41FF275F300497FAD /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1C780FEE1FEE78E800497FAD /* Accelerate.framework */; };
+		1C8034DD1BDD073B00668E00 /* BGM_ClientsTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1C8034DC1BDD073B00668E00 /* BGM_ClientsTests.mm */; };
+		1CA2A9E21E8D1D08007A76A4 /* BGM_Stream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CA2A9E01E8D1D08007A76A4 /* BGM_Stream.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_Stream.cpp"; }; };
+		1CB8B36E1BBBD541000E2DD1 /* BGM_PlugInInterface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B36D1BBBD541000E2DD1 /* BGM_PlugInInterface.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_PlugInInterface.cpp"; }; };
+		1CB8B3761BBBD924000E2DD1 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1CB8B3741BBBD924000E2DD1 /* CoreAudio.framework */; };
+		1CB8B3771BBBD924000E2DD1 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1CB8B3751BBBD924000E2DD1 /* CoreFoundation.framework */; };
+		1CB8B37D1BBCCF62000E2DD1 /* BGM_PlugIn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B37B1BBCCF62000E2DD1 /* BGM_PlugIn.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_PlugIn.cpp"; }; };
+		1CB8B3801BBCCF87000E2DD1 /* BGM_Device.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B37E1BBCCF87000E2DD1 /* BGM_Device.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_Device.cpp"; }; };
+		1CB8B3831BBCE7B5000E2DD1 /* BGM_Object.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B3811BBCE7B5000E2DD1 /* BGM_Object.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_Object.cpp"; }; };
+		1CBB322C1BDD3A3000C9BD55 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1CB8B3741BBBD924000E2DD1 /* CoreAudio.framework */; };
+		1CC1DF8D1BE5705700FB8FE4 /* CACFDictionary.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CE3E68C1BE263CA00167F5D /* CACFDictionary.cpp */; };
+		1CC1DF8E1BE5706C00FB8FE4 /* CACFArray.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CE3E68F1BE2683900167F5D /* CACFArray.cpp */; };
+		1CC1DF931BE7B79500FB8FE4 /* CADebugger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CC1DF871BE558B000FB8FE4 /* CADebugger.cpp */; };
+		1CC1DF941BE7B79500FB8FE4 /* CAVolumeCurve.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B38C1BBCF4A9000E2DD1 /* CAVolumeCurve.cpp */; };
+		1CC1DF9E1BE94AA200FB8FE4 /* DeviceIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 1CC1DF9D1BE94AA200FB8FE4 /* DeviceIcon.icns */; };
+		1CD95B121E93AA5200EB8EF0 /* BGM_AbstractDevice.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CDF3ABD1E8644C20001E9B7 /* BGM_AbstractDevice.cpp */; };
+		1CD95B131E93AA5200EB8EF0 /* BGM_NullDevice.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CDF3ABA1E863B980001E9B7 /* BGM_NullDevice.cpp */; };
+		1CD95B141E93AA5200EB8EF0 /* BGM_Stream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CA2A9E01E8D1D08007A76A4 /* BGM_Stream.cpp */; };
+		1CDF3ABC1E863B980001E9B7 /* BGM_NullDevice.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CDF3ABA1E863B980001E9B7 /* BGM_NullDevice.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_NullDevice.cpp"; }; };
+		1CDF3ABF1E8644C20001E9B7 /* BGM_AbstractDevice.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CDF3ABD1E8644C20001E9B7 /* BGM_AbstractDevice.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_AbstractDevice.cpp"; }; };
+		1CE03A4B238A5BF40036908D /* CABitOperations.h in Headers */ = {isa = PBXBuildFile; fileRef = 1CE03A4A238A5BF40036908D /* CABitOperations.h */; };
+		1CE03A4C23928B370036908D /* CARingBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C6181A52388FC8A0068C4D3 /* CARingBuffer.cpp */; };
+		27379B821C76D62D0084A24C /* CADebugMacros.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B3701BBBD8A4000E2DD1 /* CADebugMacros.cpp */; };
+		27379B831C76D62D0084A24C /* CADebugPrintf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B3781BBBDFA2000E2DD1 /* CADebugPrintf.cpp */; };
+		27381A161C8EF50F00DF167C /* BGM_XPCHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 27381A141C8EF50F00DF167C /* BGM_XPCHelper.m */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_XPCHelper.m"; }; };
+		2743C9CD1D7EF8760089613B /* CACFArray.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CE3E68F1BE2683900167F5D /* CACFArray.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=libPublicUtility-CACFArray.cpp"; }; };
+		2743C9CF1D7EF8760089613B /* CACFDictionary.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CE3E68C1BE263CA00167F5D /* CACFDictionary.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=libPublicUtility-CACFDictionary.cpp"; }; };
+		2743C9D11D7EF8760089613B /* CACFNumber.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C305D9B1BE294B5004EBB91 /* CACFNumber.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=libPublicUtility-CACFNumber.cpp"; }; };
+		2743C9D31D7EF8760089613B /* CACFString.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B38A1BBCF4A9000E2DD1 /* CACFString.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=libPublicUtility-CACFString.cpp"; }; };
+		2743C9D51D7EF8760089613B /* CADebugger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CC1DF871BE558B000FB8FE4 /* CADebugger.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=libPublicUtility-CADebugger.cpp"; }; };
+		2743C9D71D7EF8760089613B /* CADebugMacros.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B3701BBBD8A4000E2DD1 /* CADebugMacros.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=libPublicUtility-CADebugMacros.cpp"; }; };
+		2743C9D91D7EF8760089613B /* CADebugPrintf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B3781BBBDFA2000E2DD1 /* CADebugPrintf.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=libPublicUtility-CADebugPrintf.cpp"; }; };
+		BDEB1066000000000000C1FE /* BGMDebugLogging.c in Sources */ = {isa = PBXBuildFile; fileRef = BDEB1066000000000000C0FE /* BGMDebugLogging.c */; };
+		BDEB1066000000000000C2FE /* BGMDebugLogging.c in Sources */ = {isa = PBXBuildFile; fileRef = BDEB1066000000000000C0FE /* BGMDebugLogging.c */; settings = {COMPILER_FLAGS = "-frandom-seed=libPublicUtility-BGMDebugLogging.c"; }; };
+		2743C9DB1D7EF8760089613B /* CADispatchQueue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B3931BBD2418000E2DD1 /* CADispatchQueue.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=libPublicUtility-CADispatchQueue.cpp"; }; };
+		2743C9DE1D7EF8760089613B /* CAHostTimeBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B3871BBCF08A000E2DD1 /* CAHostTimeBase.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=libPublicUtility-CAHostTimeBase.cpp"; }; };
+		2743C9E01D7EF8760089613B /* CAMutex.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B3841BBCEFE8000E2DD1 /* CAMutex.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=libPublicUtility-CAMutex.cpp"; }; };
+		2743C9E21D7EF8760089613B /* CAPThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C38210F1C4A18DE00A0C8C6 /* CAPThread.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=libPublicUtility-CAPThread.cpp"; }; };
+		2743C9E41D7EF8760089613B /* CAVolumeCurve.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B38C1BBCF4A9000E2DD1 /* CAVolumeCurve.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=libPublicUtility-CAVolumeCurve.cpp"; }; };
+		2743C9E61D7EF8E00089613B /* libPublicUtility.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2743C9C61D7EF84B0089613B /* libPublicUtility.a */; };
+		275343BD1DE9B44900DF3858 /* BGM_Utils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 275343BC1DE9B44900DF3858 /* BGM_Utils.cpp */; settings = {COMPILER_FLAGS = "-frandom-seed=BGMDriver-BGM_Utils.cpp"; }; };
+		277170101CA0CFC300AB34B4 /* BGM_PlugInInterface.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B36D1BBBD541000E2DD1 /* BGM_PlugInInterface.cpp */; };
+		277170111CA0CFC300AB34B4 /* CACFNumber.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C305D9B1BE294B5004EBB91 /* CACFNumber.cpp */; };
+		277EE6591C7269910037F1EE /* BGM_ClientMapTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 277EE6581C7269910037F1EE /* BGM_ClientMapTests.mm */; };
+		277EE65A1C728C630037F1EE /* BGM_Client.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C0CB6B01C642C600084C15A /* BGM_Client.cpp */; };
+		277EE65B1C728C630037F1EE /* BGM_ClientMap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C0CB6B21C642C600084C15A /* BGM_ClientMap.cpp */; };
+		277EE65C1C728C630037F1EE /* BGM_Clients.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C0CB6B41C642C600084C15A /* BGM_Clients.cpp */; };
+		277EE65D1C728C630037F1EE /* BGM_TaskQueue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C38210C1C4A163A00A0C8C6 /* BGM_TaskQueue.cpp */; };
+		277EE65E1C728C9D0037F1EE /* BGM_PlugIn.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B37B1BBCCF62000E2DD1 /* BGM_PlugIn.cpp */; };
+		277EE65F1C728C9D0037F1EE /* CAPThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1C38210F1C4A18DE00A0C8C6 /* CAPThread.cpp */; };
+		277EE6601C728CA70037F1EE /* BGM_Device.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B37E1BBCCF87000E2DD1 /* BGM_Device.cpp */; };
+		277EE6611C728CAE0037F1EE /* BGM_Object.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B3811BBCE7B5000E2DD1 /* BGM_Object.cpp */; };
+		277EE6631C728CC70037F1EE /* CADispatchQueue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B3931BBD2418000E2DD1 /* CADispatchQueue.cpp */; };
+		277EE6641C728CDB0037F1EE /* CACFString.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B38A1BBCF4A9000E2DD1 /* CACFString.cpp */; };
+		277EE6651C728CDB0037F1EE /* CAHostTimeBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1CB8B3871BBCF08A000E2DD1 /* CAHostTimeBase.cpp */; };
+		2795973E1C9847CF00A002FB /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2795973D1C9847CF00A002FB /* Foundation.framework */; };
+		27D643C31C9FBE1600737F6E /* BGM_XPCHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 27381A141C8EF50F00DF167C /* BGM_XPCHelper.m */; };
+		27E6B5F01E01966A00EC0AAB /* BGM_Utils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 275343BC1DE9B44900DF3858 /* BGM_Utils.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0FE173942F5ED91500EBB922 /* BGMThreadSafetyAnalysis.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = BGMThreadSafetyAnalysis.h; path = ../SharedSource/BGMThreadSafetyAnalysis.h; sourceTree = SOURCE_ROOT; };
+		19FE7431C588F36F4F1E70BB /* BGM_MuteControl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_MuteControl.h; sourceTree = "<group>"; };
+		19FE7B8CE9148B3D8D7517C6 /* BGM_Control.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_Control.h; sourceTree = "<group>"; };
+		19FE7BC3396C4E50D21E1BC8 /* BGM_Control.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_Control.cpp; sourceTree = "<group>"; };
+		19FE7E6DC2A1B61211D74782 /* BGM_MuteControl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_MuteControl.cpp; sourceTree = "<group>"; };
+		1C09150523F010E8001EB0E1 /* set-version.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "set-version.sh"; sourceTree = "<group>"; };
+		1C0CB6A61C4E06C00084C15A /* CAAtomicStack.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CAAtomicStack.h; path = PublicUtility/CAAtomicStack.h; sourceTree = "<group>"; };
+		1C0CB6A71C4E06F70084C15A /* CAAtomic.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CAAtomic.h; path = PublicUtility/CAAtomic.h; sourceTree = "<group>"; };
+		1C0CB6A91C50A3AF0084C15A /* CAAutoDisposer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CAAutoDisposer.h; path = PublicUtility/CAAutoDisposer.h; sourceTree = "<group>"; };
+		1C0CB6B01C642C600084C15A /* BGM_Client.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_Client.cpp; sourceTree = "<group>"; };
+		1C0CB6B11C642C600084C15A /* BGM_Client.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_Client.h; sourceTree = "<group>"; };
+		1C0CB6B21C642C600084C15A /* BGM_ClientMap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_ClientMap.cpp; sourceTree = "<group>"; };
+		1C0CB6B31C642C600084C15A /* BGM_ClientMap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_ClientMap.h; sourceTree = "<group>"; };
+		1C0CB6B41C642C600084C15A /* BGM_Clients.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_Clients.cpp; sourceTree = "<group>"; };
+		1C0CB6B51C642C600084C15A /* BGM_Clients.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_Clients.h; sourceTree = "<group>"; };
+		1C0CB6B81C642C600084C15A /* BGM_ClientTasks.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_ClientTasks.h; sourceTree = "<group>"; };
+		1C305D9B1BE294B5004EBB91 /* CACFNumber.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CACFNumber.cpp; path = PublicUtility/CACFNumber.cpp; sourceTree = "<group>"; };
+		1C305D9C1BE294B5004EBB91 /* CACFNumber.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CACFNumber.h; path = PublicUtility/CACFNumber.h; sourceTree = "<group>"; };
+		1C37B3681E9B8D3C000DF98F /* CAPropertyAddress.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CAPropertyAddress.h; path = PublicUtility/CAPropertyAddress.h; sourceTree = "<group>"; };
+		1C38210C1C4A163A00A0C8C6 /* BGM_TaskQueue.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_TaskQueue.cpp; sourceTree = "<group>"; };
+		1C38210D1C4A163A00A0C8C6 /* BGM_TaskQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_TaskQueue.h; sourceTree = "<group>"; };
+		1C38210F1C4A18DE00A0C8C6 /* CAPThread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CAPThread.cpp; path = PublicUtility/CAPThread.cpp; sourceTree = "<group>"; };
+		1C3821101C4A18DE00A0C8C6 /* CAPThread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CAPThread.h; path = PublicUtility/CAPThread.h; sourceTree = "<group>"; };
+		1C3DB4861BE063C500EC8160 /* BGM_DeviceTests.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = BGM_DeviceTests.mm; sourceTree = "<group>"; };
+		1C6181A42388FC8A0068C4D3 /* CARingBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CARingBuffer.h; path = PublicUtility/CARingBuffer.h; sourceTree = "<group>"; };
+		1C6181A52388FC8A0068C4D3 /* CARingBuffer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CARingBuffer.cpp; path = PublicUtility/CARingBuffer.cpp; sourceTree = "<group>"; };
+		1C7010731F05ED5100D8CCDC /* BGM_AudibleState.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_AudibleState.cpp; sourceTree = "<group>"; };
+		1C7010741F05ED5100D8CCDC /* BGM_AudibleState.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_AudibleState.h; sourceTree = "<group>"; };
+		1C7010771F07A0BA00D8CCDC /* BGM_VolumeControl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_VolumeControl.cpp; sourceTree = "<group>"; };
+		1C7010781F07A0BA00D8CCDC /* BGM_VolumeControl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_VolumeControl.h; sourceTree = "<group>"; };
+		1C780FEE1FEE78E800497FAD /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
+		1C8034DA1BDD073B00668E00 /* BGMDriverTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BGMDriverTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1C8034DC1BDD073B00668E00 /* BGM_ClientsTests.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = BGM_ClientsTests.mm; sourceTree = "<group>"; };
+		1C8034DE1BDD073B00668E00 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1CA2A9E01E8D1D08007A76A4 /* BGM_Stream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_Stream.cpp; sourceTree = "<group>"; };
+		1CA2A9E11E8D1D08007A76A4 /* BGM_Stream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_Stream.h; sourceTree = "<group>"; };
+		1CB8B3641BBBB78D000E2DD1 /* Background Music Device.driver */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Background Music Device.driver"; sourceTree = BUILT_PRODUCTS_DIR; };
+		1CB8B3681BBBB78D000E2DD1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1CB8B36D1BBBD541000E2DD1 /* BGM_PlugInInterface.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_PlugInInterface.cpp; sourceTree = "<group>"; };
+		1CB8B3701BBBD8A4000E2DD1 /* CADebugMacros.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CADebugMacros.cpp; path = PublicUtility/CADebugMacros.cpp; sourceTree = "<group>"; };
+		1CB8B3711BBBD8A4000E2DD1 /* CADebugMacros.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CADebugMacros.h; path = PublicUtility/CADebugMacros.h; sourceTree = "<group>"; };
+		1CB8B3721BBBD8A4000E2DD1 /* CAException.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CAException.h; path = PublicUtility/CAException.h; sourceTree = "<group>"; };
+		1CB8B3741BBBD924000E2DD1 /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
+		1CB8B3751BBBD924000E2DD1 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+		1CB8B3781BBBDFA2000E2DD1 /* CADebugPrintf.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CADebugPrintf.cpp; path = PublicUtility/CADebugPrintf.cpp; sourceTree = "<group>"; };
+		BDEB1066000000000000C0FE /* BGMDebugLogging.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = BGMDebugLogging.c; path = PublicUtility/BGMDebugLogging.c; sourceTree = "<group>"; };
+		BDEB1066000000000000A0FE /* BGMDebugLogging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BGMDebugLogging.h; path = PublicUtility/BGMDebugLogging.h; sourceTree = "<group>"; };
+		1CB8B3791BBBDFA2000E2DD1 /* CADebugPrintf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CADebugPrintf.h; path = PublicUtility/CADebugPrintf.h; sourceTree = "<group>"; };
+		1CB8B37B1BBCCF62000E2DD1 /* BGM_PlugIn.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_PlugIn.cpp; sourceTree = "<group>"; };
+		1CB8B37C1BBCCF62000E2DD1 /* BGM_PlugIn.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_PlugIn.h; sourceTree = "<group>"; };
+		1CB8B37E1BBCCF87000E2DD1 /* BGM_Device.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_Device.cpp; sourceTree = "<group>"; };
+		1CB8B37F1BBCCF87000E2DD1 /* BGM_Device.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_Device.h; sourceTree = "<group>"; };
+		1CB8B3811BBCE7B5000E2DD1 /* BGM_Object.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_Object.cpp; sourceTree = "<group>"; };
+		1CB8B3821BBCE7B5000E2DD1 /* BGM_Object.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_Object.h; sourceTree = "<group>"; };
+		1CB8B3841BBCEFE8000E2DD1 /* CAMutex.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CAMutex.cpp; path = PublicUtility/CAMutex.cpp; sourceTree = "<group>"; };
+		1CB8B3851BBCEFE8000E2DD1 /* CAMutex.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CAMutex.h; path = PublicUtility/CAMutex.h; sourceTree = "<group>"; };
+		1CB8B3871BBCF08A000E2DD1 /* CAHostTimeBase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CAHostTimeBase.cpp; path = PublicUtility/CAHostTimeBase.cpp; sourceTree = "<group>"; };
+		1CB8B3881BBCF08A000E2DD1 /* CAHostTimeBase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CAHostTimeBase.h; path = PublicUtility/CAHostTimeBase.h; sourceTree = "<group>"; };
+		1CB8B38A1BBCF4A9000E2DD1 /* CACFString.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CACFString.cpp; path = PublicUtility/CACFString.cpp; sourceTree = "<group>"; };
+		1CB8B38B1BBCF4A9000E2DD1 /* CACFString.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CACFString.h; path = PublicUtility/CACFString.h; sourceTree = "<group>"; };
+		1CB8B38C1BBCF4A9000E2DD1 /* CAVolumeCurve.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CAVolumeCurve.cpp; path = PublicUtility/CAVolumeCurve.cpp; sourceTree = "<group>"; };
+		1CB8B38D1BBCF4A9000E2DD1 /* CAVolumeCurve.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CAVolumeCurve.h; path = PublicUtility/CAVolumeCurve.h; sourceTree = "<group>"; };
+		1CB8B3931BBD2418000E2DD1 /* CADispatchQueue.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CADispatchQueue.cpp; path = PublicUtility/CADispatchQueue.cpp; sourceTree = "<group>"; };
+		1CB8B3941BBD2418000E2DD1 /* CADispatchQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CADispatchQueue.h; path = PublicUtility/CADispatchQueue.h; sourceTree = "<group>"; };
+		1CC1DF871BE558B000FB8FE4 /* CADebugger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CADebugger.cpp; path = PublicUtility/CADebugger.cpp; sourceTree = "<group>"; };
+		1CC1DF881BE558B000FB8FE4 /* CADebugger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CADebugger.h; path = PublicUtility/CADebugger.h; sourceTree = "<group>"; };
+		1CC1DF991BE865C000FB8FE4 /* quick_install.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = quick_install.sh; sourceTree = "<group>"; };
+		1CC1DF9D1BE94AA200FB8FE4 /* DeviceIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = DeviceIcon.icns; sourceTree = "<group>"; };
+		1CDF3ABA1E863B980001E9B7 /* BGM_NullDevice.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_NullDevice.cpp; sourceTree = "<group>"; };
+		1CDF3ABB1E863B980001E9B7 /* BGM_NullDevice.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_NullDevice.h; sourceTree = "<group>"; };
+		1CDF3ABD1E8644C20001E9B7 /* BGM_AbstractDevice.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BGM_AbstractDevice.cpp; sourceTree = "<group>"; };
+		1CDF3ABE1E8644C20001E9B7 /* BGM_AbstractDevice.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_AbstractDevice.h; sourceTree = "<group>"; };
+		1CE03A4A238A5BF40036908D /* CABitOperations.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CABitOperations.h; path = PublicUtility/CABitOperations.h; sourceTree = "<group>"; };
+		1CE3E68C1BE263CA00167F5D /* CACFDictionary.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CACFDictionary.cpp; path = PublicUtility/CACFDictionary.cpp; sourceTree = "<group>"; };
+		1CE3E68D1BE263CA00167F5D /* CACFDictionary.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CACFDictionary.h; path = PublicUtility/CACFDictionary.h; sourceTree = "<group>"; };
+		1CE3E68F1BE2683900167F5D /* CACFArray.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = CACFArray.cpp; path = PublicUtility/CACFArray.cpp; sourceTree = "<group>"; };
+		1CE3E6901BE2683900167F5D /* CACFArray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = CACFArray.h; path = PublicUtility/CACFArray.h; sourceTree = "<group>"; };
+		27381A141C8EF50F00DF167C /* BGM_XPCHelper.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BGM_XPCHelper.m; sourceTree = "<group>"; };
+		27381A151C8EF50F00DF167C /* BGM_XPCHelper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BGM_XPCHelper.h; sourceTree = "<group>"; };
+		2743C9C61D7EF84B0089613B /* libPublicUtility.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libPublicUtility.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		275343BC1DE9B44900DF3858 /* BGM_Utils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = BGM_Utils.cpp; path = ../SharedSource/BGM_Utils.cpp; sourceTree = "<group>"; };
+		2771700E1CA0C16200AB34B4 /* BGM_Utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BGM_Utils.h; path = ../SharedSource/BGM_Utils.h; sourceTree = "<group>"; };
+		277EE6581C7269910037F1EE /* BGM_ClientMapTests.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = BGM_ClientMapTests.mm; sourceTree = "<group>"; };
+		2795973D1C9847CF00A002FB /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		27D643B71C9FABF600737F6E /* BGM_Types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BGM_Types.h; path = ../SharedSource/BGM_Types.h; sourceTree = "<group>"; };
+		27D643B81C9FABF600737F6E /* BGMXPCProtocols.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BGMXPCProtocols.h; path = ../SharedSource/BGMXPCProtocols.h; sourceTree = "<group>"; };
+		27D643C21C9FBC5800737F6E /* BGM_TestUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BGM_TestUtils.h; path = ../SharedSource/BGM_TestUtils.h; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1C8034D71BDD073B00668E00 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C780FF41FF275F300497FAD /* Accelerate.framework in Frameworks */,
+				1CBB322C1BDD3A3000C9BD55 /* CoreAudio.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1CB8B3611BBBB78D000E2DD1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C780FEF1FEE78E800497FAD /* Accelerate.framework in Frameworks */,
+				2743C9E61D7EF8E00089613B /* libPublicUtility.a in Frameworks */,
+				2795973E1C9847CF00A002FB /* Foundation.framework in Frameworks */,
+				1CB8B3761BBBD924000E2DD1 /* CoreAudio.framework in Frameworks */,
+				1CB8B3771BBBD924000E2DD1 /* CoreFoundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2743C9C31D7EF84B0089613B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1C09150423F010E8001EB0E1 /* Scripts */ = {
+			isa = PBXGroup;
+			children = (
+				1C09150523F010E8001EB0E1 /* set-version.sh */,
+			);
+			name = Scripts;
+			path = ../SharedSource/Scripts;
+			sourceTree = "<group>";
+		};
+		1C0CB6AF1C642C600084C15A /* DeviceClients */ = {
+			isa = PBXGroup;
+			children = (
+				1C0CB6B11C642C600084C15A /* BGM_Client.h */,
+				1C0CB6B01C642C600084C15A /* BGM_Client.cpp */,
+				1C0CB6B31C642C600084C15A /* BGM_ClientMap.h */,
+				1C0CB6B21C642C600084C15A /* BGM_ClientMap.cpp */,
+				1C0CB6B51C642C600084C15A /* BGM_Clients.h */,
+				1C0CB6B41C642C600084C15A /* BGM_Clients.cpp */,
+				1C0CB6B81C642C600084C15A /* BGM_ClientTasks.h */,
+			);
+			path = DeviceClients;
+			sourceTree = "<group>";
+		};
+		1C8034DB1BDD073B00668E00 /* BGMDriverTests */ = {
+			isa = PBXGroup;
+			children = (
+				1C8034DC1BDD073B00668E00 /* BGM_ClientsTests.mm */,
+				277EE6581C7269910037F1EE /* BGM_ClientMapTests.mm */,
+				1C3DB4861BE063C500EC8160 /* BGM_DeviceTests.mm */,
+				1C8034DE1BDD073B00668E00 /* Info.plist */,
+			);
+			path = BGMDriverTests;
+			sourceTree = SOURCE_ROOT;
+		};
+		1CB8B3591BBBB69C000E2DD1 = {
+			isa = PBXGroup;
+			children = (
+				1CB8B3661BBBB78D000E2DD1 /* BGMDriver */,
+				1C8034DB1BDD073B00668E00 /* BGMDriverTests */,
+				27D643B61C9FABDE00737F6E /* SharedSource */,
+				1CB8B36F1BBBD7AE000E2DD1 /* PublicUtility */,
+				1CB8B3651BBBB78D000E2DD1 /* Products */,
+				2743CA241D86E2E80089613B /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		1CB8B3651BBBB78D000E2DD1 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1CB8B3641BBBB78D000E2DD1 /* Background Music Device.driver */,
+				1C8034DA1BDD073B00668E00 /* BGMDriverTests.xctest */,
+				2743C9C61D7EF84B0089613B /* libPublicUtility.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		1CB8B3661BBBB78D000E2DD1 /* BGMDriver */ = {
+			isa = PBXGroup;
+			children = (
+				1CB8B36D1BBBD541000E2DD1 /* BGM_PlugInInterface.cpp */,
+				1CB8B37C1BBCCF62000E2DD1 /* BGM_PlugIn.h */,
+				1CB8B37B1BBCCF62000E2DD1 /* BGM_PlugIn.cpp */,
+				1CB8B3821BBCE7B5000E2DD1 /* BGM_Object.h */,
+				1CB8B3811BBCE7B5000E2DD1 /* BGM_Object.cpp */,
+				1CDF3ABE1E8644C20001E9B7 /* BGM_AbstractDevice.h */,
+				1CDF3ABD1E8644C20001E9B7 /* BGM_AbstractDevice.cpp */,
+				1CB8B37F1BBCCF87000E2DD1 /* BGM_Device.h */,
+				1CB8B37E1BBCCF87000E2DD1 /* BGM_Device.cpp */,
+				1C7010741F05ED5100D8CCDC /* BGM_AudibleState.h */,
+				1C7010731F05ED5100D8CCDC /* BGM_AudibleState.cpp */,
+				1CDF3ABB1E863B980001E9B7 /* BGM_NullDevice.h */,
+				1CDF3ABA1E863B980001E9B7 /* BGM_NullDevice.cpp */,
+				1CA2A9E11E8D1D08007A76A4 /* BGM_Stream.h */,
+				1CA2A9E01E8D1D08007A76A4 /* BGM_Stream.cpp */,
+				19FE7B8CE9148B3D8D7517C6 /* BGM_Control.h */,
+				19FE7BC3396C4E50D21E1BC8 /* BGM_Control.cpp */,
+				1C7010781F07A0BA00D8CCDC /* BGM_VolumeControl.h */,
+				1C7010771F07A0BA00D8CCDC /* BGM_VolumeControl.cpp */,
+				19FE7431C588F36F4F1E70BB /* BGM_MuteControl.h */,
+				19FE7E6DC2A1B61211D74782 /* BGM_MuteControl.cpp */,
+				1C0CB6AF1C642C600084C15A /* DeviceClients */,
+				1C38210D1C4A163A00A0C8C6 /* BGM_TaskQueue.h */,
+				1C38210C1C4A163A00A0C8C6 /* BGM_TaskQueue.cpp */,
+				27381A151C8EF50F00DF167C /* BGM_XPCHelper.h */,
+				27381A141C8EF50F00DF167C /* BGM_XPCHelper.m */,
+				1CB8B3671BBBB78D000E2DD1 /* Supporting Files */,
+			);
+			path = BGMDriver;
+			sourceTree = "<group>";
+		};
+		1CB8B3671BBBB78D000E2DD1 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				1CC1DF9D1BE94AA200FB8FE4 /* DeviceIcon.icns */,
+				1CC1DF991BE865C000FB8FE4 /* quick_install.sh */,
+				1CB8B3681BBBB78D000E2DD1 /* Info.plist */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		1CB8B36F1BBBD7AE000E2DD1 /* PublicUtility */ = {
+			isa = PBXGroup;
+			children = (
+				1C0CB6A71C4E06F70084C15A /* CAAtomic.h */,
+				1C37B3681E9B8D3C000DF98F /* CAPropertyAddress.h */,
+				1C0CB6A61C4E06C00084C15A /* CAAtomicStack.h */,
+				1C0CB6A91C50A3AF0084C15A /* CAAutoDisposer.h */,
+				1CE03A4A238A5BF40036908D /* CABitOperations.h */,
+				1CE3E68F1BE2683900167F5D /* CACFArray.cpp */,
+				1CE3E6901BE2683900167F5D /* CACFArray.h */,
+				1CE3E68C1BE263CA00167F5D /* CACFDictionary.cpp */,
+				1CE3E68D1BE263CA00167F5D /* CACFDictionary.h */,
+				1C305D9B1BE294B5004EBB91 /* CACFNumber.cpp */,
+				1C305D9C1BE294B5004EBB91 /* CACFNumber.h */,
+				1CB8B38A1BBCF4A9000E2DD1 /* CACFString.cpp */,
+				1CB8B38B1BBCF4A9000E2DD1 /* CACFString.h */,
+				1CC1DF871BE558B000FB8FE4 /* CADebugger.cpp */,
+				1CC1DF881BE558B000FB8FE4 /* CADebugger.h */,
+				1CB8B3701BBBD8A4000E2DD1 /* CADebugMacros.cpp */,
+				1CB8B3711BBBD8A4000E2DD1 /* CADebugMacros.h */,
+				1CB8B3781BBBDFA2000E2DD1 /* CADebugPrintf.cpp */,
+				1CB8B3791BBBDFA2000E2DD1 /* CADebugPrintf.h */,
+				BDEB1066000000000000C0FE /* BGMDebugLogging.c */,
+				BDEB1066000000000000A0FE /* BGMDebugLogging.h */,
+				1CB8B3931BBD2418000E2DD1 /* CADispatchQueue.cpp */,
+				1CB8B3941BBD2418000E2DD1 /* CADispatchQueue.h */,
+				1CB8B3721BBBD8A4000E2DD1 /* CAException.h */,
+				1CB8B3871BBCF08A000E2DD1 /* CAHostTimeBase.cpp */,
+				1CB8B3881BBCF08A000E2DD1 /* CAHostTimeBase.h */,
+				1CB8B3841BBCEFE8000E2DD1 /* CAMutex.cpp */,
+				1CB8B3851BBCEFE8000E2DD1 /* CAMutex.h */,
+				1C38210F1C4A18DE00A0C8C6 /* CAPThread.cpp */,
+				1C3821101C4A18DE00A0C8C6 /* CAPThread.h */,
+				1C6181A42388FC8A0068C4D3 /* CARingBuffer.h */,
+				1C6181A52388FC8A0068C4D3 /* CARingBuffer.cpp */,
+				1CB8B38C1BBCF4A9000E2DD1 /* CAVolumeCurve.cpp */,
+				1CB8B38D1BBCF4A9000E2DD1 /* CAVolumeCurve.h */,
+			);
+			name = PublicUtility;
+			sourceTree = "<group>";
+		};
+		2743CA241D86E2E80089613B /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				1C780FEE1FEE78E800497FAD /* Accelerate.framework */,
+				1CB8B3741BBBD924000E2DD1 /* CoreAudio.framework */,
+				1CB8B3751BBBD924000E2DD1 /* CoreFoundation.framework */,
+				2795973D1C9847CF00A002FB /* Foundation.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		27D643B61C9FABDE00737F6E /* SharedSource */ = {
+			isa = PBXGroup;
+			children = (
+				27D643B71C9FABF600737F6E /* BGM_Types.h */,
+				2771700E1CA0C16200AB34B4 /* BGM_Utils.h */,
+				275343BC1DE9B44900DF3858 /* BGM_Utils.cpp */,
+				1C09150423F010E8001EB0E1 /* Scripts */,
+				27D643C21C9FBC5800737F6E /* BGM_TestUtils.h */,
+				0FE173942F5ED91500EBB922 /* BGMThreadSafetyAnalysis.h */,
+				27D643B81C9FABF600737F6E /* BGMXPCProtocols.h */,
+			);
+			name = SharedSource;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		2743C9C41D7EF84B0089613B /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1CE03A4B238A5BF40036908D /* CABitOperations.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		1C8034D91BDD073B00668E00 /* BGMDriverTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1C8034DF1BDD073B00668E00 /* Build configuration list for PBXNativeTarget "BGMDriverTests" */;
+			buildPhases = (
+				1C8034D61BDD073B00668E00 /* Sources */,
+				1C8034D71BDD073B00668E00 /* Frameworks */,
+				1C8034D81BDD073B00668E00 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BGMDriverTests;
+			productName = BGMDriverTests;
+			productReference = 1C8034DA1BDD073B00668E00 /* BGMDriverTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		1CB8B3631BBBB78D000E2DD1 /* Background Music Device */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1CB8B3691BBBB78D000E2DD1 /* Build configuration list for PBXNativeTarget "Background Music Device" */;
+			buildPhases = (
+				1CB8B3601BBBB78D000E2DD1 /* Sources */,
+				1CB8B3611BBBB78D000E2DD1 /* Frameworks */,
+				1CB8B3621BBBB78D000E2DD1 /* Resources */,
+				1C09150823F01E6D001EB0E1 /* Run Script - set-version.sh */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Background Music Device";
+			productName = BGMDriver;
+			productReference = 1CB8B3641BBBB78D000E2DD1 /* Background Music Device.driver */;
+			productType = "com.apple.product-type.bundle";
+		};
+		2743C9C51D7EF84B0089613B /* PublicUtility */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2743C9C71D7EF84B0089613B /* Build configuration list for PBXNativeTarget "PublicUtility" */;
+			buildPhases = (
+				2743C9C21D7EF84B0089613B /* Sources */,
+				2743C9C31D7EF84B0089613B /* Frameworks */,
+				2743C9C41D7EF84B0089613B /* Headers */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PublicUtility;
+			productName = PublicUtility;
+			productReference = 2743C9C61D7EF84B0089613B /* libPublicUtility.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1CB8B35A1BBBB69C000E2DD1 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				CLASSPREFIX = BGM_;
+				LastUpgradeCheck = 0900;
+				ORGANIZATIONNAME = "Background Music contributors";
+				TargetAttributes = {
+					1C8034D91BDD073B00668E00 = {
+						CreatedOnToolsVersion = 7.0.1;
+					};
+					1CB8B3631BBBB78D000E2DD1 = {
+						CreatedOnToolsVersion = 6.4;
+					};
+					2743C9C51D7EF84B0089613B = {
+						CreatedOnToolsVersion = 8.0;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 1CB8B35D1BBBB69C000E2DD1 /* Build configuration list for PBXProject "BGMDriver" */;
+			compatibilityVersion = "Xcode 6.3";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 1CB8B3591BBBB69C000E2DD1;
+			productRefGroup = 1CB8B3651BBBB78D000E2DD1 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				1CB8B3631BBBB78D000E2DD1 /* Background Music Device */,
+				1C8034D91BDD073B00668E00 /* BGMDriverTests */,
+				2743C9C51D7EF84B0089613B /* PublicUtility */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		1C8034D81BDD073B00668E00 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1CB8B3621BBBB78D000E2DD1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1CC1DF9E1BE94AA200FB8FE4 /* DeviceIcon.icns in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		1C09150823F01E6D001EB0E1 /* Run Script - set-version.sh */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Run Script - set-version.sh";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Append the git HEAD short ID to the build version for SNAPSHOT and DEBUG builds.\n\"$SRCROOT/../SharedSource/Scripts/set-version.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1C8034D61BDD073B00668E00 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1CE03A4C23928B370036908D /* CARingBuffer.cpp in Sources */,
+				1CD95B121E93AA5200EB8EF0 /* BGM_AbstractDevice.cpp in Sources */,
+				1CD95B131E93AA5200EB8EF0 /* BGM_NullDevice.cpp in Sources */,
+				1CD95B141E93AA5200EB8EF0 /* BGM_Stream.cpp in Sources */,
+				27E6B5F01E01966A00EC0AAB /* BGM_Utils.cpp in Sources */,
+				277170101CA0CFC300AB34B4 /* BGM_PlugInInterface.cpp in Sources */,
+				277170111CA0CFC300AB34B4 /* CACFNumber.cpp in Sources */,
+				1C7010761F05ED5100D8CCDC /* BGM_AudibleState.cpp in Sources */,
+				27D643C31C9FBE1600737F6E /* BGM_XPCHelper.m in Sources */,
+				27379B821C76D62D0084A24C /* CADebugMacros.cpp in Sources */,
+				27379B831C76D62D0084A24C /* CADebugPrintf.cpp in Sources */,
+				BDEB1066000000000000C1FE /* BGMDebugLogging.c in Sources */,
+				277EE6641C728CDB0037F1EE /* CACFString.cpp in Sources */,
+				277EE6651C728CDB0037F1EE /* CAHostTimeBase.cpp in Sources */,
+				277EE6631C728CC70037F1EE /* CADispatchQueue.cpp in Sources */,
+				277EE6611C728CAE0037F1EE /* BGM_Object.cpp in Sources */,
+				277EE6601C728CA70037F1EE /* BGM_Device.cpp in Sources */,
+				277EE65E1C728C9D0037F1EE /* BGM_PlugIn.cpp in Sources */,
+				277EE65F1C728C9D0037F1EE /* CAPThread.cpp in Sources */,
+				277EE65A1C728C630037F1EE /* BGM_Client.cpp in Sources */,
+				1C70107A1F07A0BA00D8CCDC /* BGM_VolumeControl.cpp in Sources */,
+				277EE65B1C728C630037F1EE /* BGM_ClientMap.cpp in Sources */,
+				277EE65C1C728C630037F1EE /* BGM_Clients.cpp in Sources */,
+				277EE65D1C728C630037F1EE /* BGM_TaskQueue.cpp in Sources */,
+				1C30A69F1C1E98F000C05AA5 /* CAMutex.cpp in Sources */,
+				1CC1DF931BE7B79500FB8FE4 /* CADebugger.cpp in Sources */,
+				1CC1DF941BE7B79500FB8FE4 /* CAVolumeCurve.cpp in Sources */,
+				1CC1DF8E1BE5706C00FB8FE4 /* CACFArray.cpp in Sources */,
+				277EE6591C7269910037F1EE /* BGM_ClientMapTests.mm in Sources */,
+				1CC1DF8D1BE5705700FB8FE4 /* CACFDictionary.cpp in Sources */,
+				1C3DB4871BE063C500EC8160 /* BGM_DeviceTests.mm in Sources */,
+				1C8034DD1BDD073B00668E00 /* BGM_ClientsTests.mm in Sources */,
+				19FE761291BF07AEA278F25C /* BGM_MuteControl.cpp in Sources */,
+				19FE742AEBE30B21C4CF9285 /* BGM_Control.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1CB8B3601BBBB78D000E2DD1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1CA2A9E21E8D1D08007A76A4 /* BGM_Stream.cpp in Sources */,
+				1C7010751F05ED5100D8CCDC /* BGM_AudibleState.cpp in Sources */,
+				1CB8B3801BBCCF87000E2DD1 /* BGM_Device.cpp in Sources */,
+				1C0CB6B91C642C600084C15A /* BGM_Client.cpp in Sources */,
+				1CB8B36E1BBBD541000E2DD1 /* BGM_PlugInInterface.cpp in Sources */,
+				1CB8B37D1BBCCF62000E2DD1 /* BGM_PlugIn.cpp in Sources */,
+				27381A161C8EF50F00DF167C /* BGM_XPCHelper.m in Sources */,
+				1CDF3ABF1E8644C20001E9B7 /* BGM_AbstractDevice.cpp in Sources */,
+				1C7010791F07A0BA00D8CCDC /* BGM_VolumeControl.cpp in Sources */,
+				1C0CB6BA1C642C600084C15A /* BGM_ClientMap.cpp in Sources */,
+				1CB8B3831BBCE7B5000E2DD1 /* BGM_Object.cpp in Sources */,
+				275343BD1DE9B44900DF3858 /* BGM_Utils.cpp in Sources */,
+				1C38210E1C4A163A00A0C8C6 /* BGM_TaskQueue.cpp in Sources */,
+				1C0CB6BB1C642C600084C15A /* BGM_Clients.cpp in Sources */,
+				1CDF3ABC1E863B980001E9B7 /* BGM_NullDevice.cpp in Sources */,
+				19FE766482B57D852CCF6F0A /* BGM_MuteControl.cpp in Sources */,
+				19FE77D40F15EA060B462D83 /* BGM_Control.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2743C9C21D7EF84B0089613B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2743C9CD1D7EF8760089613B /* CACFArray.cpp in Sources */,
+				2743C9CF1D7EF8760089613B /* CACFDictionary.cpp in Sources */,
+				2743C9D11D7EF8760089613B /* CACFNumber.cpp in Sources */,
+				1C6181A72388FC8A0068C4D3 /* CARingBuffer.cpp in Sources */,
+				2743C9D31D7EF8760089613B /* CACFString.cpp in Sources */,
+				2743C9D51D7EF8760089613B /* CADebugger.cpp in Sources */,
+				2743C9D71D7EF8760089613B /* CADebugMacros.cpp in Sources */,
+				2743C9D91D7EF8760089613B /* CADebugPrintf.cpp in Sources */,
+				BDEB1066000000000000C2FE /* BGMDebugLogging.c in Sources */,
+				2743C9DB1D7EF8760089613B /* CADispatchQueue.cpp in Sources */,
+				2743C9DE1D7EF8760089613B /* CAHostTimeBase.cpp in Sources */,
+				2743C9E01D7EF8760089613B /* CAMutex.cpp in Sources */,
+				2743C9E21D7EF8760089613B /* CAPThread.cpp in Sources */,
+				2743C9E41D7EF8760089613B /* CAVolumeCurve.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1C8034E01BDD073B00668E00 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_IMPLICIT_SIGN_CONVERSION = NO;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__EXIT_TIME_DESTRUCTORS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				INFOPLIST_FILE = BGMDriverTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				MTL_ENABLE_DEBUG_INFO = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bearisdriving.BGM.DriverTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WARNING_CFLAGS = "";
+			};
+			name = Debug;
+		};
+		1C8034E11BDD073B00668E00 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_IMPLICIT_SIGN_CONVERSION = NO;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__EXIT_TIME_DESTRUCTORS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				INFOPLIST_FILE = BGMDriverTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				MTL_ENABLE_DEBUG_INFO = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bearisdriving.BGM.DriverTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WARNING_CFLAGS = "";
+			};
+			name = Release;
+		};
+		1CB8B35E1BBBB69C000E2DD1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_SECURITY_FLOATLOOPCOUNTER = YES;
+				CLANG_ANALYZER_SECURITY_INSECUREAPI_RAND = YES;
+				CLANG_ANALYZER_SECURITY_INSECUREAPI_STRCPY = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_ASSIGN_ENUM = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_IMPLICIT_SIGN_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_NULLABLE_TO_NONNULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_REPEATED_USE_OF_WEAK = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CLANG_WARN__EXIT_TIME_DESTRUCTORS = YES;
+				DEAD_CODE_STRIPPING = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = c11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"CoreAudio_Debug=1",
+					"CoreAudio_UseSysLog=1",
+					"CoreAudio_StopOnAssert=1",
+					"CoreAudio_ThreadStampMessages=0",
+				);
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = YES;
+				GCC_WARN_ABOUT_MISSING_NEWLINE = YES;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_HIDDEN_VIRTUAL_FUNCTIONS = YES;
+				GCC_WARN_INITIALIZER_NOT_FULLY_BRACKETED = YES;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				GCC_WARN_SHADOW = YES;
+				GCC_WARN_SIGN_COMPARE = YES;
+				GCC_WARN_STRICT_SELECTOR_MATCH = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_LABEL = YES;
+				GCC_WARN_UNUSED_PARAMETER = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
+				ONLY_ACTIVE_ARCH = YES;
+				RUN_CLANG_STATIC_ANALYZER = YES;
+				WARNING_CFLAGS = (
+					"-Wpartial-availability",
+					"-Wthread-safety",
+					"-Wthread-safety-beta",
+				);
+			};
+			name = Debug;
+		};
+		1CB8B35F1BBBB69C000E2DD1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_SECURITY_FLOATLOOPCOUNTER = YES;
+				CLANG_ANALYZER_SECURITY_INSECUREAPI_RAND = YES;
+				CLANG_ANALYZER_SECURITY_INSECUREAPI_STRCPY = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_ASSIGN_ENUM = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_IMPLICIT_SIGN_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_NULLABLE_TO_NONNULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_REPEATED_USE_OF_WEAK = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CLANG_WARN__EXIT_TIME_DESTRUCTORS = YES;
+				DEAD_CODE_STRIPPING = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = c11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=0",
+					"CoreAudio_Debug=0",
+					"CoreAudio_UseSysLog=1",
+					"CoreAudio_StopOnAssert=0",
+					"CoreAudio_ThreadStampMessages=0",
+				);
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = YES;
+				GCC_WARN_ABOUT_MISSING_NEWLINE = YES;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_HIDDEN_VIRTUAL_FUNCTIONS = YES;
+				GCC_WARN_INITIALIZER_NOT_FULLY_BRACKETED = YES;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				GCC_WARN_SHADOW = YES;
+				GCC_WARN_SIGN_COMPARE = YES;
+				GCC_WARN_STRICT_SELECTOR_MATCH = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_LABEL = YES;
+				GCC_WARN_UNUSED_PARAMETER = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
+				RUN_CLANG_STATIC_ANALYZER = YES;
+				WARNING_CFLAGS = (
+					"-Wpartial-availability",
+					"-Wthread-safety",
+					"-Wthread-safety-beta",
+				);
+			};
+			name = Release;
+		};
+		1CB8B36A1BBBB78D000E2DD1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_C_LANGUAGE_STANDARD = "compiler-default";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_FILE = BGMDriver/Info.plist;
+				INSTALL_GROUP = wheel;
+				INSTALL_OWNER = root;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Audio/Plug-Ins/HAL";
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bearisdriving.BGM.Driver;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				WRAPPER_EXTENSION = driver;
+			};
+			name = Debug;
+		};
+		1CB8B36B1BBBB78D000E2DD1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEPLOYMENT_POSTPROCESSING = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = "compiler-default";
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_FILE = BGMDriver/Info.plist;
+				INSTALL_GROUP = wheel;
+				INSTALL_OWNER = root;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Audio/Plug-Ins/HAL";
+				MTL_ENABLE_DEBUG_INFO = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bearisdriving.BGM.Driver;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				WRAPPER_EXTENSION = driver;
+			};
+			name = Release;
+		};
+		2743C9C81D7EF84B0089613B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_IMPLICIT_SIGN_CONVERSION = NO;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_SUSPICIOUS_MOVES = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				EXECUTABLE_PREFIX = lib;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				MTL_ENABLE_DEBUG_INFO = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		2743C9C91D7EF84B0089613B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_IMPLICIT_SIGN_CONVERSION = NO;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_SUSPICIOUS_MOVES = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				EXECUTABLE_PREFIX = lib;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1C8034DF1BDD073B00668E00 /* Build configuration list for PBXNativeTarget "BGMDriverTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1C8034E01BDD073B00668E00 /* Debug */,
+				1C8034E11BDD073B00668E00 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1CB8B35D1BBBB69C000E2DD1 /* Build configuration list for PBXProject "BGMDriver" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1CB8B35E1BBBB69C000E2DD1 /* Debug */,
+				1CB8B35F1BBBB69C000E2DD1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1CB8B3691BBBB78D000E2DD1 /* Build configuration list for PBXNativeTarget "Background Music Device" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1CB8B36A1BBBB78D000E2DD1 /* Debug */,
+				1CB8B36B1BBBB78D000E2DD1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2743C9C71D7EF84B0089613B /* Build configuration list for PBXNativeTarget "PublicUtility" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2743C9C81D7EF84B0089613B /* Debug */,
+				2743C9C91D7EF84B0089613B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 1CB8B35A1BBBB69C000E2DD1 /* Project object */;
+}

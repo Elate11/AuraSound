@@ -892,7 +892,7 @@ public class RealAudioEngine: ObservableObject {
     }
     
     public func checkBlackHoleAvailability() {
-        hasBlackHole = (findDevice(nameSubstring: "BlackHole") != nil)
+        hasBlackHole = (findDevice(nameSubstring: "Background Music") != nil || findDevice(nameSubstring: "BlackHole") != nil)
     }
     
     public func ensureHiFiBluetoothMode() {
@@ -1051,17 +1051,18 @@ public class RealAudioEngine: ObservableObject {
         
         ensureHiFiBluetoothMode()
         
-        guard let blackHoleID = findInputDevice(nameSubstring: "BlackHole") else {
-            statusMessage = "BlackHole 2ch not found"
+        let captureID = findInputDevice(nameSubstring: "Background Music") ?? findInputDevice(nameSubstring: "BlackHole")
+        guard let virtualID = captureID else {
+            statusMessage = "Virtual audio driver not found"
             hasBlackHole = false
             return false
         }
         hasBlackHole = true
-        self.inputDeviceID = blackHoleID
+        self.inputDeviceID = virtualID
         self.inSampleRate = getDeviceSampleRate(deviceID: inputDeviceID)
         
         // Filter valid output devices
-        let validIDs = toOutputDeviceIDs.filter { $0 != blackHoleID && hasOutputStreams(deviceID: $0) }
+        let validIDs = toOutputDeviceIDs.filter { $0 != virtualID && hasOutputStreams(deviceID: $0) }
         guard !validIDs.isEmpty else {
             statusMessage = "No output devices selected"
             return false
@@ -1259,7 +1260,7 @@ public class RealAudioEngine: ObservableObject {
         activeDeviceCount = sinks.count
         statusMessage = "Multi-Output Active (\(sinks.count) Devices)"
         
-        setSystemDefaultOutputDevice(deviceID: blackHoleID)
+        setSystemDefaultOutputDevice(deviceID: virtualID)
         return true
     }
     

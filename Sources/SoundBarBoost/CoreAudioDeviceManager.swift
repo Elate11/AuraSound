@@ -147,7 +147,7 @@ public class AudioDeviceManager: ObservableObject {
         for devID in deviceIDs {
             if hasOutputStreams(deviceID: devID) {
                 let name = getDeviceName(deviceID: devID)
-                if name.contains("BlackHole") {
+                if name.contains("BlackHole") || name.contains("Background Music") {
                     continue
                 }
                 
@@ -249,12 +249,12 @@ public class AudioDeviceManager: ObservableObject {
             DispatchQueue.main
         ) { [weak self] _, _ in
             guard let self = self else { return }
-            // If AuraSound routing is active, ensure default output device stays on BlackHole
+            // If AuraSound routing is active, ensure default output device stays on the virtual driver
             if RealAudioEngine.shared.isRoutingActive {
-                if let bhID = RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole") {
+                if let vID = self.virtualCaptureDeviceID {
                     let currentDef = self.getDefaultOutputDeviceID()
-                    if currentDef != bhID {
-                        RealAudioEngine.shared.setSystemDefaultOutputDevice(deviceID: bhID)
+                    if currentDef != vID {
+                        RealAudioEngine.shared.setSystemDefaultOutputDevice(deviceID: vID)
                     }
                 }
             }
@@ -278,6 +278,11 @@ public class AudioDeviceManager: ObservableObject {
         setupBlackHoleVolumeListener()
     }
     
+    public var virtualCaptureDeviceID: AudioObjectID? {
+        return RealAudioEngine.shared.findInputDevice(nameSubstring: "Background Music")
+            ?? RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole")
+    }
+    
     private var registeredVolumeListenerDeviceIDs: Set<AudioObjectID> = []
     
     public func setupBlackHoleVolumeListener() {
@@ -285,9 +290,9 @@ public class AudioDeviceManager: ObservableObject {
     }
     
     public func setupVolumeSyncListeners() {
-        // Listen ONLY on BlackHole 2ch so keyboard volume keys adjust exclusively the Master Volume
-        if let bhID = RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole") {
-            registerVolumeListener(for: bhID, syncToBlackHole: false)
+        // Listen on the virtual device so keyboard volume keys adjust exclusively the Master Volume
+        if let vID = virtualCaptureDeviceID {
+            registerVolumeListener(for: vID, syncToBlackHole: false)
         }
     }
     
@@ -375,9 +380,9 @@ public class AudioDeviceManager: ObservableObject {
             RealAudioEngine.shared.setSinkVolume(deviceID: devID, volume: newDevVol)
         }
         
-        // Update BlackHole 2ch so system menu bar / OSD matches masterVolume
-        if syncToBlackHole, let bhID = RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole") {
-            setDeviceVolume(deviceID: bhID, volume: clamped)
+        // Update virtual device so system menu bar / OSD matches masterVolume
+        if syncToBlackHole, let vID = virtualCaptureDeviceID {
+            setDeviceVolume(deviceID: vID, volume: clamped)
             ensureBlackHoleUnmuted()
         }
     }
@@ -465,7 +470,7 @@ public class AudioDeviceManager: ObservableObject {
     }
     
     public func ensureBlackHoleUnmuted() {
-        if let bhID = RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole") {
+        if let vID = virtualCaptureDeviceID {
             var zero: UInt32 = 0
             for channel: UInt32 in [kAudioObjectPropertyElementMain, 0, 1, 2] {
                 var addr = AudioObjectPropertyAddress(
@@ -473,8 +478,8 @@ public class AudioDeviceManager: ObservableObject {
                     mScope: kAudioDevicePropertyScopeOutput,
                     mElement: channel
                 )
-                if AudioObjectHasProperty(bhID, &addr) {
-                    AudioObjectSetPropertyData(bhID, &addr, 0, nil, UInt32(MemoryLayout<UInt32>.size), &zero)
+                if AudioObjectHasProperty(vID, &addr) {
+                    AudioObjectSetPropertyData(vID, &addr, 0, nil, UInt32(MemoryLayout<UInt32>.size), &zero)
                 }
             }
         }

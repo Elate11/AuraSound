@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import CoreAudio
 
 public struct AppAudioTarget: Identifiable, Equatable {
     public let id: String
@@ -175,6 +176,9 @@ public class AppVolumeManager: ObservableObject {
             let isMute = target.isMuted || volume <= 0.001
             let vol100 = Int(max(0.0, min(1.0, volume)) * 100.0)
             
+            // 1. Direct hardware-level PCM scaling in CoreAudio HAL driver (SoundSource method)
+            self.applyVolumeViaDriver(target: target, volume: volume, isMute: isMute)
+            
             if bundle.contains("spotify") {
                 let targetVol = isMute ? 0 : vol100
                 let script = "tell application \"Spotify\" to set sound volume to \(targetVol)"
@@ -299,6 +303,87 @@ public class AppVolumeManager: ObservableObject {
             eventUp.flags = flags
             eventUp.postToPid(pid)
         }
+    }
+    
+    public func applyVolumeViaDriver(target: AppAudioTarget, volume: Float, isMute: Bool) {
+        guard let devID = findDriverDeviceID() else { return }
+        
+        let rvol: Int32 = isMute ? 0 : Int32(round(max(0.0, min(1.0, volume)) * 100.0))
+        
+        var list: [NSDictionary] = [
+            [
+                "pid" as NSString: NSNumber(value: target.pid),
+                "rvol" as NSString: NSNumber(value: rvol)
+            ],
+            [
+                "bid" as NSString: target.bundleId as NSString,
+                "rvol" as NSString: NSNumber(value: rvol)
+            ]
+        ]
+        
+        if target.bundleId.contains("yandex") || target.name.lowercased().contains("яндекс") {
+            list.append([
+                "bid" as NSString: "ru.yandex.desktop.music.helper" as NSString,
+                "rvol" as NSString: NSNumber(value: rvol)
+            ])
+            list.append([
+                "bid" as NSString: "ru.yandex.desktop.music" as NSString,
+                "rvol" as NSString: NSNumber(value: rvol)
+            ])
+        } else if target.bundleId.contains("safari") {
+            list.append([
+                "bid" as NSString: "com.apple.WebKit.GPU" as NSString,
+                "rvol" as NSString: NSNumber(value: rvol)
+            ])
+            list.append([
+                "bid" as NSString: "com.apple.WebKit.WebContent" as NSString,
+                "rvol" as NSString: NSNumber(value: rvol)
+            ])
+        } else if target.bundleId.contains("chrome") {
+            list.append([
+                "bid" as NSString: "com.google.Chrome.helper" as NSString,
+                "rvol" as NSString: NSNumber(value: rvol)
+            ])
+        }
+        
+        var appVolumesAddr = AudioObjectPropertyAddress(
+            mSelector: AudioObjectPropertySelector(0x61707673), // 'apvs'
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        
+        let array: NSArray = list as NSArray
+        var cfArr: CFArray = array as CFArray
+        let dataSize = UInt32(MemoryLayout<CFArray>.size)
+        
+        _ = withUnsafePointer(to: &cfArr) { ptr in
+            AudioObjectSetPropertyData(devID, &appVolumesAddr, 0, nil, dataSize, ptr)
+        }
+    }
+    
+    private func findDriverDeviceID() -> AudioObjectID? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size) == noErr else { return nil }
+        let count = Int(size) / MemoryLayout<AudioObjectID>.size
+        var deviceIDs = [AudioObjectID](repeating: 0, count: count)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceIDs) == noErr else { return nil }
+        
+        var apvsAddr = AudioObjectPropertyAddress(
+            mSelector: AudioObjectPropertySelector(0x61707673), // 'apvs'
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        for devID in deviceIDs {
+            if AudioObjectHasProperty(devID, &apvsAddr) {
+                return devID
+            }
+        }
+        return nil
     }
     
     private func runAppleScript(_ source: String) {
