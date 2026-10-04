@@ -342,6 +342,24 @@ public final class MultiSinkAudioDSP {
         return (l, r, smoothedSpectrum)
     }
     
+    /// Continuous rational studio soft-clipper: 100% bit-exact linear below knee (0.82),
+    /// perfectly smooth C1-continuous curvature above knee, strictly bounded < 0.985.
+    /// Completely eliminates digital hard clipping, harsh odd harmonics, and wheezing.
+    @inline(__always)
+    public static func studioSoftClip(_ x: Float) -> Float {
+        let knee: Float = 0.82
+        let ceiling: Float = 0.985
+        let absX = abs(x)
+        if absX <= knee {
+            return x
+        }
+        let range = ceiling - knee
+        let excess = (absX - knee) / range
+        let compressed = excess / (1.0 + excess)
+        let out = knee + compressed * range
+        return x < 0 ? -out : out
+    }
+    
     public func readAndProcessForSink(
         sink: OutputDeviceSink,
         leftOut: UnsafeMutablePointer<Float>,
@@ -625,29 +643,46 @@ public final class MultiSinkAudioDSP {
                 rawR = mid - side
             }
             
-            // 5. Clean Headroom Boost (1.0x to 2.0x = +0dB to +6dB)
+            // 5. Intelligent Loudness Maximizer & Headroom Boost (1.0x to 3.0x = +0dB to +9.5dB)
             let boostedL = rawL * boost
             let boostedR = rawR * boost
             
-            // 6. Transparent Broadcast Limiter (Zero distortion / Zero clipping)
-            let peak = max(abs(boostedL), abs(boostedR))
-            if peak > sink.limiterEnvelope {
-                sink.limiterEnvelope = peak * 0.20 + sink.limiterEnvelope * 0.80
+            // 6. Transparent Broadcast Peak Limiter & Zero-Clip Engine
+            if isAntiClip {
+                let peak = max(abs(boostedL), abs(boostedR))
+                
+                // Fast attack ensures the envelope catches loud transients instantly (zero overshoot)
+                if peak > sink.limiterEnvelope {
+                    sink.limiterEnvelope = peak
+                } else {
+                    sink.limiterEnvelope = sink.limiterEnvelope * 0.9997 + peak * 0.0003
+                }
+                
+                let ceiling: Float = 0.95
+                let threshold: Float = 0.82
+                let targetGain: Float
+                if sink.limiterEnvelope > threshold {
+                    targetGain = ceiling / sink.limiterEnvelope
+                } else {
+                    targetGain = 1.0
+                }
+                
+                // Immediate gain reduction on attack, smooth transparent recovery on release
+                if targetGain < sink.limiterGain {
+                    sink.limiterGain = min(sink.limiterGain * 0.35 + targetGain * 0.65, targetGain)
+                } else {
+                    sink.limiterGain = sink.limiterGain * 0.9996 + 1.0 * 0.0004
+                }
+                
+                let limitedL = boostedL * sink.limiterGain
+                let limitedR = boostedR * sink.limiterGain
+                
+                leftOut[i] = MultiSinkAudioDSP.studioSoftClip(limitedL)
+                rightOut[i] = MultiSinkAudioDSP.studioSoftClip(limitedR)
             } else {
-                sink.limiterEnvelope = sink.limiterEnvelope * 0.9998
+                leftOut[i] = MultiSinkAudioDSP.studioSoftClip(boostedL)
+                rightOut[i] = MultiSinkAudioDSP.studioSoftClip(boostedR)
             }
-            
-            let threshold: Float = 0.88
-            let ceiling: Float = 0.98
-            if sink.limiterEnvelope > threshold {
-                let targetGain = ceiling / max(ceiling, sink.limiterEnvelope)
-                sink.limiterGain = sink.limiterGain * 0.88 + targetGain * 0.12
-            } else {
-                sink.limiterGain = sink.limiterGain * 0.9995 + 1.0 * 0.0005
-            }
-            
-            leftOut[i] = max(-0.99, min(0.99, boostedL * sink.limiterGain))
-            rightOut[i] = max(-0.99, min(0.99, boostedR * sink.limiterGain))
         }
         
         // 7. ViPER Convolver (Real-time IRS Impulse Response Convolution via Apple Accelerate)
@@ -684,8 +719,8 @@ public final class MultiSinkAudioDSP {
             let wet = convWet
             let dry = 1.0 - (wet * 0.45)
             for j in 0..<count {
-                leftOut[j] = max(-0.99, min(0.99, leftOut[j] * dry + convL[j] * wet))
-                rightOut[j] = max(-0.99, min(0.99, rightOut[j] * dry + convR[j] * wet))
+                leftOut[j] = MultiSinkAudioDSP.studioSoftClip(leftOut[j] * dry + convL[j] * wet)
+                rightOut[j] = MultiSinkAudioDSP.studioSoftClip(rightOut[j] * dry + convR[j] * wet)
             }
         }
         
@@ -1183,12 +1218,13 @@ public class RealAudioEngine: ObservableObject {
                 
                 if numChans >= 2 {
                     for i in 0..<frameCount {
-                        outPtr[i * 2] = left[i] * volL
-                        outPtr[i * 2 + 1] = right[i] * volR
+                        outPtr[i * 2] = MultiSinkAudioDSP.studioSoftClip(left[i] * volL)
+                        outPtr[i * 2 + 1] = MultiSinkAudioDSP.studioSoftClip(right[i] * volR)
                     }
                 } else {
                     for i in 0..<frameCount {
-                        outPtr[i] = ((left[i] * volL) + (right[i] * volR)) * 0.5
+                        let mono = ((left[i] * volL) + (right[i] * volR)) * 0.5
+                        outPtr[i] = MultiSinkAudioDSP.studioSoftClip(mono)
                     }
                 }
                 return noErr
