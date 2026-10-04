@@ -824,7 +824,58 @@ public struct MainPopoverView: View {
     }
     
     private var atmosAcousticParameters: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 6) {
+            // 1. Room Speaker Distance (0.5m to 5.0m)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text("SPEAKER DISTANCE: \(String(format: "%.1f", dsp.physicalSpeakerDistance)) m")
+                        .font(.system(size: 9.5, weight: .black, design: .monospaced))
+                        .foregroundColor(TermTheme.greenBright)
+                    Spacer()
+                    HStack(spacing: 3) {
+                        TermButton(title: "0.8m", color: TermTheme.greenBright) {
+                            dsp.physicalSpeakerDistance = 0.8
+                        }
+                        TermButton(title: "1.5m", color: TermTheme.greenBright) {
+                            dsp.physicalSpeakerDistance = 1.5
+                        }
+                        TermButton(title: "2.0m", color: TermTheme.greenBright) {
+                            dsp.physicalSpeakerDistance = 2.0
+                        }
+                        TermButton(title: "3.5m", color: TermTheme.greenBright) {
+                            dsp.physicalSpeakerDistance = 3.5
+                        }
+                    }
+                }
+                Slider(value: $dsp.physicalSpeakerDistance, in: 0.5...5.0, step: 0.1)
+                    .accentColor(TermTheme.greenBright)
+            }
+            
+            // 2. Spatial 3D Intensity (50% to 300%)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text("SPATIAL 3D INTENSITY: \(Int(dsp.spatialIntensity3D * 100))%")
+                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                        .foregroundColor(TermTheme.cyan)
+                    Spacer()
+                    HStack(spacing: 3) {
+                        TermButton(title: "100%", color: TermTheme.cyan) {
+                            dsp.spatialIntensity3D = 1.0
+                        }
+                        TermButton(title: "160%", color: TermTheme.cyan) {
+                            dsp.spatialIntensity3D = 1.6
+                        }
+                        TermButton(title: "250%", color: TermTheme.cyan) {
+                            dsp.spatialIntensity3D = 2.5
+                        }
+                    }
+                }
+                Slider(value: $dsp.spatialIntensity3D, in: 0.5...3.0, step: 0.1)
+                    .accentColor(TermTheme.cyan)
+            }
+            
+            Divider().background(TermTheme.borderSubtle)
+            
             HStack {
                 Text("SURROUND WIDTH: \(Int(dsp.atmosSurroundWidth * 100))%")
                     .font(.system(size: 9.5, weight: .bold, design: .monospaced))
@@ -854,8 +905,19 @@ public struct MainPopoverView: View {
                     .frame(width: 170)
                     .accentColor(TermTheme.amber)
             }
+            
+            // Dynamic Room Separation Indicator
+            if devManager.selectedDeviceIDs.count > 1 {
+                HStack(spacing: 4) {
+                    Text("[ 3D STAGE: DIALOGUE ON SCREEN <-> SURROUND AT \(String(format: "%.1f", dsp.physicalSpeakerDistance))M ]")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundColor(TermTheme.greenBright)
+                    Spacer()
+                }
+                .padding(.top, 2)
+            }
         }
-        .padding(6)
+        .padding(8)
         .background(Color.black.opacity(0.35))
         .overlay(RoundedRectangle(cornerRadius: 3).stroke(TermTheme.borderSubtle, lineWidth: 1))
     }

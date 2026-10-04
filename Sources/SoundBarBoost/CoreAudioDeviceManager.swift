@@ -417,6 +417,18 @@ public class AudioDeviceManager: ObservableObject {
         RealAudioEngine.shared.updateSinkSpatialProperties(deviceID: deviceID)
     }
     
+    public func updateRemoteSpeakerDistance(_ distance: Double) {
+        for devID in selectedDeviceIDs {
+            let dev = outputDevices.first { $0.id == devID }
+            let name = dev?.name.lowercased() ?? ""
+            let isBuiltIn = dev?.transportType == kAudioDeviceTransportTypeBuiltIn || name.contains("macbook") || name.contains("динамики")
+            if !isBuiltIn {
+                let curAngle = getSpatialPosition(for: devID).angle
+                setSpatialPosition(for: devID, angle: curAngle, distance: distance)
+            }
+        }
+    }
+    
     public func getSpatialPan(for deviceID: AudioObjectID) -> (panL: Float, panR: Float) {
         let pos = getSpatialPosition(for: deviceID)
         let rad = Float(pos.angle * .pi / 180.0)

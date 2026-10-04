@@ -494,11 +494,16 @@ public final class MultiSinkAudioDSP {
                 let expandedSideL = (side - xR * 0.65) * (0.85 + (widthFactor - 1.0) * 0.95)
                 let expandedSideR = (-side - xL * 0.65) * (0.85 + (widthFactor - 1.0) * 0.95)
                 
-                // Step C: Virtual 7.1.4 Surround Upmixing (7ms decorrelation delay)
-                sink.surroundDelayL[sink.surroundHead % 1200] = expandedSideL
-                sink.surroundDelayR[sink.surroundHead % 1200] = expandedSideR
-                let surrL = sink.surroundDelayL[(sink.surroundHead - 336 + 1200) % 1200]
-                let surrR = sink.surroundDelayR[(sink.surroundHead - 336 + 1200) % 1200]
+                // Step C: Virtual 7.1.4 Surround Upmixing with Physical Distance Reflection
+                sink.surroundDelayL[sink.surroundHead & 4095] = expandedSideL
+                sink.surroundDelayR[sink.surroundHead & 4095] = expandedSideR
+                
+                let dist = sink.distanceMeters
+                // Reflection delay scales physically with distance: ~12ms at 0.8m to ~38ms at 4.0m
+                let delayMs = Float(8.0 + dist * 7.5)
+                let delaySamples = min(3800, max(128, Int(delayMs * 48.0)))
+                let surrL = sink.surroundDelayL[(sink.surroundHead - delaySamples) & 4095]
+                let surrR = sink.surroundDelayR[(sink.surroundHead - delaySamples) & 4095]
                 sink.surroundHead += 1
                 
                 // Step D: Cinema Sub-Bass Exciter (Deep punchy cinema low-end)
@@ -523,9 +528,9 @@ public final class MultiSinkAudioDSP {
                     heightR = (hR - expandedSideR) * elevGain
                 }
                 
-                // Step F: Cinema Hall Acoustic Envelopment (Clean diffuse room without ringing)
+                // Step F: Cinema Hall Acoustic Envelopment (Scales with room size & physical distance)
                 let roomIn = (expandedSideL - expandedSideR) * 0.40
-                let cFeedback: Float = min(0.55, 0.30 + Float(atmosRoom) * 0.05)
+                let cFeedback: Float = min(0.68, 0.28 + Float(dist * 0.06) + Float(atmosRoom) * 0.05)
                 
                 let c0 = sink.combL0[sink.combHead0 % 1116]
                 sink.combL0[sink.combHead0 % 1116] = roomIn + c0 * cFeedback
@@ -544,11 +549,11 @@ public final class MultiSinkAudioDSP {
                 let hallL = (c0 + c1) * 0.45
                 let hallR = (c2 + c3) * 0.45
                 
-                let wetMix = Float(max(0.15, min(0.42, 0.22 * atmosRoom)))
+                let wetMix = max(0.18, min(0.68, 0.20 * atmosRoom * Float(dist / 1.4)))
                 
-                // Final 3D Spatial Assembly with Physical Speaker Allocation:
+                // Final 3D Spatial Assembly with Physical Speaker Allocation & 3D Intensity:
                 let role = sink.spatialRole
-                let dist = sink.distanceMeters
+                let intensity = Float(dspMgr.spatialIntensity3D)
                 
                 let midGain: Float
                 let sideGain: Float
@@ -560,45 +565,45 @@ public final class MultiSinkAudioDSP {
                 switch role {
                 case .frontCenter:
                     // MacBook / Screen Front Center: Focused dialogue, lead vocal, tight front imaging
-                    // Suppress rear reflections and hall reverberation right at screen
-                    midGain = 1.30
-                    sideGain = 0.55
-                    surrGain = 0.05
-                    heightGain = 0.15
-                    hallGain = wetMix * 0.15
-                    subGain = 0.35 // Prevent small laptop chassis from rattling
+                    // Dialogue is crystal clear and upfront; room reflections attenuated
+                    midGain = 1.0 + 0.35 * intensity
+                    sideGain = max(0.25, 0.60 - Float(dist - 1.0) * 0.10)
+                    surrGain = 0.04
+                    heightGain = 0.12
+                    hallGain = wetMix * max(0.08, Float(0.20 / dist))
+                    subGain = 0.30
                     
                 case .surroundSatellite:
-                    // Rockbox / Remote Speaker at 2m: Maximize 3D surround envelope, room reflections, overhead dome & sub-bass
-                    let distComp = Float(max(1.0, min(2.5, dist / 1.4)))
-                    midGain = 0.20 // Suppress direct dialogue so speech stays on the laptop screen
-                    sideGain = 1.25 * distComp
-                    surrGain = 1.55 * distComp  // Huge surround sound coming physically from across the room
-                    heightGain = 1.30 * distComp // Atmospheric height dome
-                    hallGain = wetMix * 1.65 * distComp // Room acoustic envelopment
-                    subGain = 1.45 * distComp  // Deep cinematic sub-bass from Rockbox
+                    // Rockbox / Remote Speaker at 2m+: Maximize 3D surround envelope, room reflections, overhead dome & sub-bass
+                    let distCurve = Float(max(1.0, min(3.0, pow(dist / 1.3, 1.2))))
+                    midGain = max(0.05, Float(0.35 - dist * 0.10)) // Speech strongly anchored to laptop screen
+                    sideGain = 1.20 * distCurve * intensity
+                    surrGain = 1.50 * distCurve * intensity   // Massive 3D surround envelopment
+                    heightGain = 1.35 * distCurve * intensity  // Atmos overhead ceiling dome
+                    hallGain = wetMix * 1.70 * distCurve * intensity // Deep cinema hall acoustic atmosphere
+                    subGain = 1.45 * distCurve * intensity   // Resonant sub-bass punch
                     
                 case .leftChannel:
                     midGain = 0.75
-                    sideGain = 1.40
-                    surrGain = 0.80
-                    heightGain = 0.50
+                    sideGain = 1.40 * intensity
+                    surrGain = 0.80 * intensity
+                    heightGain = 0.50 * intensity
                     hallGain = wetMix
                     subGain = 1.0
                     
                 case .rightChannel:
                     midGain = 0.75
-                    sideGain = 1.40
-                    surrGain = 0.80
-                    heightGain = 0.50
+                    sideGain = 1.40 * intensity
+                    surrGain = 0.80 * intensity
+                    heightGain = 0.50 * intensity
                     hallGain = wetMix
                     subGain = 1.0
                     
                 case .fullMix, .auto:
                     midGain = 1.0
-                    sideGain = 1.0
-                    surrGain = 0.42
-                    heightGain = 0.40
+                    sideGain = 1.0 * intensity
+                    surrGain = 0.42 * intensity
+                    heightGain = 0.40 * intensity
                     hallGain = wetMix
                     subGain = 1.0
                 }
@@ -733,8 +738,8 @@ public final class OutputDeviceSink {
     public var xtalkR: [Float] = [Float](repeating: 0, count: 64)
     public var xtalkHead: Int = 0
     
-    public var surroundDelayL: [Float] = [Float](repeating: 0, count: 1200)
-    public var surroundDelayR: [Float] = [Float](repeating: 0, count: 1200)
+    public var surroundDelayL: [Float] = [Float](repeating: 0, count: 4096)
+    public var surroundDelayR: [Float] = [Float](repeating: 0, count: 4096)
     public var surroundHead: Int = 0
     
     public var combL0: [Float] = [Float](repeating: 0, count: 1116)

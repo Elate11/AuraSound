@@ -174,6 +174,15 @@ public class AudioDSPManager: ObservableObject {
     @Published public var atmosBassExciter: Double = 1.35 {
         didSet { saveState() }
     }
+    @Published public var physicalSpeakerDistance: Double = 2.0 {
+        didSet {
+            saveState()
+            AudioDeviceManager.shared.updateRemoteSpeakerDistance(physicalSpeakerDistance)
+        }
+    }
+    @Published public var spatialIntensity3D: Double = 1.6 {
+        didSet { saveState() }
+    }
     
     public func selectAtmosMode(_ mode: String) {
         atmosMode = mode
@@ -424,6 +433,8 @@ public class AudioDSPManager: ObservableObject {
         UserDefaults.standard.set(atmosSurroundWidth, forKey: "Aura_AtmosSurroundWidth")
         UserDefaults.standard.set(atmosElevation, forKey: "Aura_AtmosElevation")
         UserDefaults.standard.set(atmosBassExciter, forKey: "Aura_AtmosBassExciter")
+        UserDefaults.standard.set(physicalSpeakerDistance, forKey: "Aura_SpeakerDist")
+        UserDefaults.standard.set(spatialIntensity3D, forKey: "Aura_SpatialIntensity")
         UserDefaults.standard.set(syncDelayMs, forKey: "Aura_SyncDelayMs")
         UserDefaults.standard.set(isSyncCompensationEnabled, forKey: "Aura_IsSyncComp")
         
@@ -478,6 +489,12 @@ public class AudioDSPManager: ObservableObject {
         }
         if let s = UserDefaults.standard.object(forKey: "Aura_AtmosBassExciter") as? Double {
             self.atmosBassExciter = s
+        }
+        if let dist = UserDefaults.standard.object(forKey: "Aura_SpeakerDist") as? Double {
+            self.physicalSpeakerDistance = dist
+        }
+        if let intens = UserDefaults.standard.object(forKey: "Aura_SpatialIntensity") as? Double {
+            self.spatialIntensity3D = intens
         }
         
         if let data = UserDefaults.standard.data(forKey: "Aura_EQBands"),
