@@ -308,6 +308,7 @@ public struct MainPopoverView: View {
     @ObservedObject var engine = RealAudioEngine.shared
     @ObservedObject var calibrator = AcousticAutoCalibrator.shared
     @ObservedObject var viper = ViperDSPManager.shared
+    @ObservedObject var appVolManager = AppVolumeManager.shared
     
     public var customHeight: CGFloat? = nil
     
@@ -328,6 +329,8 @@ public struct MainPopoverView: View {
                     realTimeAsciiEqualizerSection
                     
                     masterAndRoutingSection
+                    
+                    perAppAudioMixerSection
                     
                     soundBoosterSection
                     
@@ -685,14 +688,133 @@ public struct MainPopoverView: View {
         .padding(.top, 2)
     }
     
-    // MARK: - Section 02: Sound Booster & Overdrive (100% - 300%)
+    // MARK: - Section 02: Per-App Audio Mixer
+    @State private var isAppMixerExpanded: Bool = false
+    
+    private var perAppAudioMixerSection: some View {
+        let appCount = appVolManager.apps.count
+        return TermCard(title: "02: PER-APP AUDIO MIXER", badge: "\(appCount) ACTIVE") {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("──[ RUNNING APPLICATIONS VOLUME ]")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(TermTheme.dimText)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        appVolManager.refreshApps()
+                    }) {
+                        Text("[REFRESH]")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(TermTheme.cyan)
+                    }
+                    .buttonStyle(.plain)
+                }
+                
+                if appVolManager.apps.isEmpty {
+                    Text("No active user applications detected")
+                        .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                        .foregroundColor(TermTheme.disabledText)
+                        .padding(.vertical, 4)
+                } else {
+                    let displayedApps = Array(appVolManager.apps.prefix(isAppMixerExpanded ? 15 : 4))
+                    ForEach(displayedApps) { app in
+                        let vol = app.volume
+                        let isMuted = app.isMuted
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                if let icon = app.icon {
+                                    Image(nsImage: icon)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 16, height: 16)
+                                        .cornerRadius(3)
+                                } else {
+                                    Image(systemName: "app.fill")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(TermTheme.dimText)
+                                }
+                                
+                                Text(app.name)
+                                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    .foregroundColor(isMuted ? TermTheme.disabledText : TermTheme.greenBright)
+                                    .lineLimit(1)
+                                
+                                Spacer()
+                                
+                                Text(isMuted ? "[MUTED]" : "\(Int(vol * 100))%")
+                                    .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                                    .foregroundColor(isMuted ? TermTheme.red : TermTheme.green)
+                                
+                                TermButton(
+                                    title: isMuted ? "UNMUTE" : "MUTE",
+                                    isActive: isMuted,
+                                    color: isMuted ? TermTheme.red : TermTheme.amber
+                                ) {
+                                    appVolManager.toggleMute(for: app.id)
+                                }
+                            }
+                            
+                            HStack(spacing: 6) {
+                                Text(renderAsciiBar(value: Double(isMuted ? 0 : vol), maxValue: 1.0, width: 10))
+                                    .font(.system(size: 9, weight: .regular, design: .monospaced))
+                                    .foregroundColor(isMuted ? TermTheme.disabledText : TermTheme.green)
+                                
+                                Slider(
+                                    value: Binding(
+                                        get: { Double(app.volume) },
+                                        set: { appVolManager.setVolume(for: app.id, volume: Float($0)) }
+                                    ),
+                                    in: 0.0...1.0
+                                )
+                                .accentColor(isMuted ? TermTheme.disabledText : TermTheme.green)
+                                
+                                TermButton(title: "-") {
+                                    appVolManager.setVolume(for: app.id, volume: vol - 0.10)
+                                }
+                                TermButton(title: "+") {
+                                    appVolManager.setVolume(for: app.id, volume: vol + 0.10)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 2)
+                        
+                        if app.id != displayedApps.last?.id {
+                            Divider()
+                                .background(TermTheme.borderSubtle.opacity(0.4))
+                        }
+                    }
+                    
+                    if appVolManager.apps.count > 4 {
+                        Button(action: {
+                            isAppMixerExpanded.toggle()
+                        }) {
+                            HStack {
+                                Spacer()
+                                Text(isAppMixerExpanded ? "[SHOW LESS]" : "[SHOW ALL (\(appVolManager.apps.count) APPS)]")
+                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                    .foregroundColor(TermTheme.cyan)
+                                Spacer()
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 2)
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Section 03: Sound Booster & Overdrive (100% - 300%)
     private var soundBoosterSection: some View {
         let pct = dsp.boostPercentage
         let isOverdrive = dsp.boostMultiplier > 1.01
         let boostDb = isOverdrive ? String(format: "+%.1f dB", 20.0 * log10(dsp.boostMultiplier)) : "0.0 dB (clean)"
         let meterColor = pct > 250 ? TermTheme.red : (pct > 190 ? TermTheme.amber : (pct > 140 ? TermTheme.greenBright : TermTheme.cyan))
         
-        return TermCard(title: "02: SOUND BOOSTER / PREAMP", badge: "\(pct)%") {
+        return TermCard(title: "03: SOUND BOOSTER / PREAMP", badge: "\(pct)%") {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("Gain: \(pct)% [\(boostDb)]")
