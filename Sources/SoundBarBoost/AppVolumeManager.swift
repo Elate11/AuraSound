@@ -168,49 +168,138 @@ public class AppVolumeManager: ObservableObject {
         queue.async {
             let bundle = target.bundleId.lowercased()
             let name = target.name
+            let isMute = target.isMuted || volume <= 0.001
+            let vol100 = Int(max(0.0, min(1.0, volume)) * 100.0)
             
             if bundle.contains("spotify") {
-                let vol100 = Int(volume * 100.0)
-                let script = "tell application \"Spotify\" to set sound volume to \(vol100)"
+                let targetVol = isMute ? 0 : vol100
+                let script = "tell application \"Spotify\" to set sound volume to \(targetVol)"
                 self.runAppleScript(script)
             } else if bundle.contains("music") || bundle.contains("itunes") {
-                let vol100 = Int(volume * 100.0)
-                let script = "tell application \"Music\" to set sound volume to \(vol100)"
+                let script = "tell application \"Music\" to set mute to \(isMute)\ntell application \"Music\" to set sound volume to \(vol100)"
                 self.runAppleScript(script)
             } else if bundle.contains("vlc") {
                 let vol256 = Int(volume * 256.0)
-                let script = "tell application \"VLC\" to set audio volume to \(vol256)"
+                let script = isMute ? "tell application \"VLC\" to mute" : "tell application \"VLC\" to set audio volume to \(vol256)"
                 self.runAppleScript(script)
             } else if bundle.contains("quicktime") {
-                let script = "tell application \"QuickTime Player\" to if (count of documents) > 0 then set audio volume of document 1 to \(volume)"
+                let script = "tell application \"QuickTime Player\" to if (count of documents) > 0 then set audio volume of document 1 to \(isMute ? 0.0 : volume)"
                 self.runAppleScript(script)
-            } else if bundle.contains("safari") {
-                let script = """
-                tell application "Safari"
-                    repeat with w in windows
-                        repeat with t in tabs of w
-                            try
-                                do JavaScript "document.querySelectorAll('audio, video').forEach(el => el.volume = \(volume));" in t
-                            end try
+            } else if bundle.contains("safari") && !bundle.contains("webapp") {
+                if isMute {
+                    let script = """
+                    tell application "Safari"
+                        repeat with w in windows
+                            repeat with t in tabs of w
+                                try
+                                    do JavaScript "document.querySelectorAll('audio, video').forEach(el => { el.muted = true; el.volume = 0; });" in t
+                                end try
+                            end repeat
                         end repeat
-                    end repeat
-                end tell
-                """
-                self.runAppleScript(script)
+                    end tell
+                    tell application "System Events"
+                        tell process "Safari"
+                            try
+                                click menu item "Выключить звук на вкладке" of menu "Окно" of menu bar 1
+                            end try
+                            try
+                                click menu item "Mute This Tab" of menu "Window" of menu bar 1
+                            end try
+                            try
+                                click menu item "Выключить звук на остальных вкладках" of menu "Окно" of menu bar 1
+                            end try
+                            try
+                                click menu item "Mute Other Tabs" of menu "Window" of menu bar 1
+                            end try
+                        end tell
+                    end tell
+                    """
+                    self.runAppleScript(script)
+                } else {
+                    let script = """
+                    tell application "Safari"
+                        repeat with w in windows
+                            repeat with t in tabs of w
+                                try
+                                    do JavaScript "document.querySelectorAll('audio, video').forEach(el => { el.muted = false; el.volume = \(volume); });" in t
+                                end try
+                            end repeat
+                        end repeat
+                    end tell
+                    tell application "System Events"
+                        tell process "Safari"
+                            try
+                                click menu item "Включить звук на вкладке" of menu "Окно" of menu bar 1
+                            end try
+                            try
+                                click menu item "Unmute This Tab" of menu "Window" of menu bar 1
+                            end try
+                        end tell
+                    end tell
+                    """
+                    self.runAppleScript(script)
+                }
             } else if bundle.contains("chrome") || bundle.contains("arc") || bundle.contains("brave") || bundle.contains("edge") {
                 let appName = name
-                let script = """
-                tell application "\(appName)"
-                    repeat with w in windows
-                        repeat with t in tabs of w
-                            try
-                                execute t javascript "document.querySelectorAll('audio, video').forEach(el => el.volume = \(volume));"
-                            end try
+                if isMute {
+                    let script = """
+                    tell application "\(appName)"
+                        repeat with w in windows
+                            repeat with t in tabs of w
+                                try
+                                    execute t javascript "document.querySelectorAll('audio, video').forEach(el => { el.muted = true; el.volume = 0; });"
+                                end try
+                            end repeat
                         end repeat
-                    end repeat
-                end tell
-                """
-                self.runAppleScript(script)
+                    end tell
+                    tell application "System Events"
+                        tell process "\(appName)"
+                            try
+                                click menu item "Mute Tab" of menu "Window" of menu bar 1
+                            end try
+                            try
+                                click menu item "Заглушить вкладку" of menu "Окно" of menu bar 1
+                            end try
+                        end tell
+                    end tell
+                    """
+                    self.runAppleScript(script)
+                } else {
+                    let script = """
+                    tell application "\(appName)"
+                        repeat with w in windows
+                            repeat with t in tabs of w
+                                try
+                                    execute t javascript "document.querySelectorAll('audio, video').forEach(el => { el.muted = false; el.volume = \(volume); });"
+                                end try
+                            end repeat
+                        end repeat
+                    end tell
+                    tell application "System Events"
+                        tell process "\(appName)"
+                            try
+                                click menu item "Unmute Tab" of menu "Window" of menu bar 1
+                            end try
+                            try
+                                click menu item "Включить звук" of menu "Окно" of menu bar 1
+                            end try
+                        end tell
+                    end tell
+                    """
+                    self.runAppleScript(script)
+                }
+            } else if bundle.contains("yandex") || bundle.contains("music") || bundle.contains("soundcloud") || bundle.contains("telegram") || bundle.contains("discord") {
+                // Media play/pause key toggle for Electron and desktop audio players
+                if isMute {
+                    let script = """
+                    tell application "System Events"
+                        tell process "\(name)"
+                            key code 49
+                        end tell
+                    end tell
+                    """
+                    self.runAppleScript(script)
+                }
             }
         }
     }

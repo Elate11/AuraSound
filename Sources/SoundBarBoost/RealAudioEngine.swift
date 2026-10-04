@@ -381,15 +381,21 @@ public final class MultiSinkAudioDSP {
         var rHead = sink.readHead
         if rHead < 0 {
             if Double(writeHead) < targetOffset {
-                for i in 0..<count {
-                    leftOut[i] = 0
-                    rightOut[i] = 0
+                if Double(writeHead) >= Double(count) * 2.0 {
+                    rHead = 0.0
+                    sink.readHead = rHead
+                } else {
+                    for i in 0..<count {
+                        leftOut[i] = 0
+                        rightOut[i] = 0
+                    }
+                    return
                 }
-                return
+            } else {
+                rHead = max(0.0, Double(writeHead) - targetOffset)
+                sink.readHead = rHead
+                sink.isPrebuffered = true
             }
-            rHead = Double(writeHead) - targetOffset
-            sink.readHead = rHead
-            sink.isPrebuffered = true
         }
         
         let available = Double(writeHead) - rHead
@@ -402,13 +408,14 @@ public final class MultiSinkAudioDSP {
                 leftOut[i] = 0
                 rightOut[i] = 0
             }
-            sink.readHead = Double(writeHead) - targetOffset
+            sink.readHead = max(0.0, Double(writeHead) - targetOffset)
             return
         }
         
         // Large drift resync ONLY on true hardware stall / sleep / wake
         if available > (targetOffset * 4.0) || available < 0 {
-            rHead = Double(writeHead) - targetOffset
+            rHead = max(0.0, Double(writeHead) - targetOffset)
+            sink.readHead = rHead
         } else {
             // Smooth, click-free clock crystal synchronization (deadband +-256 samples)
             let drift = available - targetOffset
@@ -1040,7 +1047,7 @@ public class RealAudioEngine: ObservableObject {
     
     // MARK: - Multi-Output Simultaneous Routing
     public func startRouting(toOutputDeviceIDs: Set<AudioObjectID>) -> Bool {
-        stopRouting()
+        stopRouting(restoreDefaultDevice: false)
         
         ensureHiFiBluetoothMode()
         
@@ -1256,7 +1263,7 @@ public class RealAudioEngine: ObservableObject {
         return true
     }
     
-    public func stopRouting() {
+    public func stopRouting(restoreDefaultDevice: Bool = true) {
         if let inProc = inputProcID {
             AudioDeviceStop(inputDeviceID, inProc)
             AudioDeviceDestroyIOProcID(inputDeviceID, inProc)
@@ -1275,16 +1282,18 @@ public class RealAudioEngine: ObservableObject {
         activeDeviceCount = 0
         statusMessage = "Booster Inactive"
         
-        // Restore default system output device to physical speakers (never BlackHole)
-        let mgr = AudioDeviceManager.shared
-        if let realDev = mgr.selectedDeviceIDs.first(where: { !self.getDeviceName(deviceID: $0).contains("BlackHole") }) {
-            setSystemDefaultOutputDevice(deviceID: realDev)
-        } else if let internalSpk = findOutputDevice(nameSubstring: "MacBook") ?? findOutputDevice(nameSubstring: "Динамики") ?? findOutputDevice(nameSubstring: "Built-in") {
-            setSystemDefaultOutputDevice(deviceID: internalSpk)
-        } else if let rockbox = findOutputDevice(nameSubstring: "Rockbox") {
-            setSystemDefaultOutputDevice(deviceID: rockbox)
-        } else if let dev = mgr.outputDevices.first(where: { !$0.name.contains("BlackHole") }) {
-            setSystemDefaultOutputDevice(deviceID: dev.id)
+        // Restore default system output device to physical speakers ONLY when requested (never on internal routing transitions)
+        if restoreDefaultDevice {
+            let mgr = AudioDeviceManager.shared
+            if let realDev = mgr.selectedDeviceIDs.first(where: { !self.getDeviceName(deviceID: $0).contains("BlackHole") }) {
+                setSystemDefaultOutputDevice(deviceID: realDev)
+            } else if let internalSpk = findOutputDevice(nameSubstring: "MacBook") ?? findOutputDevice(nameSubstring: "Динамики") ?? findOutputDevice(nameSubstring: "Built-in") {
+                setSystemDefaultOutputDevice(deviceID: internalSpk)
+            } else if let rockbox = findOutputDevice(nameSubstring: "Rockbox") {
+                setSystemDefaultOutputDevice(deviceID: rockbox)
+            } else if let dev = mgr.outputDevices.first(where: { !$0.name.contains("BlackHole") }) {
+                setSystemDefaultOutputDevice(deviceID: dev.id)
+            }
         }
     }
     

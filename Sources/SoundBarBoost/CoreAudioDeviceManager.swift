@@ -202,17 +202,10 @@ public class AudioDeviceManager: ObservableObject {
                 self.selectedDeviceIDs = initialIDs
             }
             
-            self.autoEstimateSyncDelay()
             self.setupVolumeSyncListeners()
-            
             self.ensureBlackHoleUnmuted()
             for id in self.selectedDeviceIDs {
                 self.ensureHardwareDeviceActive(deviceID: id)
-            }
-            
-            // Auto start audio routing pipeline as soon as devices are populated
-            if !RealAudioEngine.shared.isRoutingActive && !self.selectedDeviceIDs.isEmpty {
-                _ = RealAudioEngine.shared.startRouting(toOutputDeviceIDs: self.selectedDeviceIDs)
             }
         }
     }
@@ -226,7 +219,7 @@ public class AudioDeviceManager: ObservableObject {
                 let name = getDeviceName(deviceID: devID).lowercased()
                 let hw = RealAudioEngine.shared.getDeviceHardwareLatency(deviceID: devID)
                 
-                var estimatedMs = max(180.0, hw.totalMs + 140.0) // CoreAudio transport + DSP hardware buffer
+                var estimatedMs = max(180.0, hw.totalMs + 140.0)
                 if name.contains("rockbox") {
                     estimatedMs = 320.0
                 } else if name.contains("airpods") {
@@ -235,7 +228,6 @@ public class AudioDeviceManager: ObservableObject {
                 
                 if AcousticAutoCalibrator.shared.measuredDelayMs == nil {
                     AudioDSPManager.shared.syncDelayMs = estimatedMs
-                    RealAudioEngine.shared.updateSyncDelay(ms: estimatedMs)
                 }
                 break
             }
@@ -257,9 +249,7 @@ public class AudioDeviceManager: ObservableObject {
             DispatchQueue.main
         ) { [weak self] _, _ in
             guard let self = self else { return }
-            self.refreshDevices()
-            
-            // If AuraSound routing is active, verify default output device remains BlackHole
+            // If AuraSound routing is active, ensure default output device stays on BlackHole
             if RealAudioEngine.shared.isRoutingActive {
                 if let bhID = RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole") {
                     let currentDef = self.getDefaultOutputDeviceID()
@@ -268,6 +258,20 @@ public class AudioDeviceManager: ObservableObject {
                     }
                 }
             }
+        }
+        
+        // Listen for hardware devices plugged / unplugged
+        var devListAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        AudioObjectAddPropertyListenerBlock(
+            AudioObjectID(kAudioObjectSystemObject),
+            &devListAddress,
+            DispatchQueue.main
+        ) { [weak self] _, _ in
+            self?.refreshDevices()
         }
         
         ensureBlackHoleUnmuted()
