@@ -72,6 +72,15 @@ public struct AudioDevice: Identifiable, Hashable {
     }
 }
 
+public enum SpatialSpeakerRole: String, CaseIterable, Codable {
+    case auto = "AUTO"
+    case frontCenter = "FRONT (CENTER)"
+    case surroundSatellite = "SURROUND (2M)"
+    case leftChannel = "LEFT CH"
+    case rightChannel = "RIGHT CH"
+    case fullMix = "FULL MIX"
+}
+
 public class AudioDeviceManager: ObservableObject {
     public static let shared = AudioDeviceManager()
     
@@ -350,6 +359,36 @@ public class AudioDeviceManager: ObservableObject {
     }
     
     // MARK: - Physical Device Spatial Positioning & Soundstage
+    @Published public var deviceRoles: [AudioObjectID: SpatialSpeakerRole] = [:]
+    
+    public func getSpatialRole(for deviceID: AudioObjectID) -> SpatialSpeakerRole {
+        return deviceRoles[deviceID] ?? .auto
+    }
+    
+    public func setSpatialRole(for deviceID: AudioObjectID, role: SpatialSpeakerRole) {
+        deviceRoles[deviceID] = role
+        RealAudioEngine.shared.updateSinkSpatialProperties(deviceID: deviceID)
+    }
+    
+    public func resolveSpatialRole(for deviceID: AudioObjectID) -> SpatialSpeakerRole {
+        let explicit = getSpatialRole(for: deviceID)
+        if explicit != .auto {
+            return explicit
+        }
+        
+        let isMulti = selectedDeviceIDs.count > 1
+        guard isMulti else { return .fullMix }
+        
+        let dev = outputDevices.first { $0.id == deviceID }
+        let name = dev?.name.lowercased() ?? ""
+        let isBuiltIn = dev?.transportType == kAudioDeviceTransportTypeBuiltIn || name.contains("macbook") || name.contains("динамики")
+        if isBuiltIn {
+            return .frontCenter
+        } else {
+            return .surroundSatellite
+        }
+    }
+    
     public func getSpatialPosition(for deviceID: AudioObjectID) -> (angle: Double, distance: Double) {
         if let pos = devicePositions[deviceID] {
             return pos
@@ -361,9 +400,9 @@ public class AudioDeviceManager: ObservableObject {
         
         let defaultPos: (angle: Double, distance: Double)
         if isBuiltIn {
-            defaultPos = (angle: 0.0, distance: 1.0) // Front Center
+            defaultPos = (angle: 0.0, distance: 0.8) // Front Center at laptop screen
         } else if isBT {
-            defaultPos = (angle: 60.0, distance: 2.2) // Front Right
+            defaultPos = (angle: 60.0, distance: 2.0) // Surround Satellite at 2 meters
         } else {
             defaultPos = (angle: -60.0, distance: 2.0) // Front Left
         }
@@ -375,6 +414,7 @@ public class AudioDeviceManager: ObservableObject {
         let clampedDist = max(0.5, min(5.0, distance))
         let clampedAngle = max(-180.0, min(180.0, angle))
         devicePositions[deviceID] = (angle: clampedAngle, distance: clampedDist)
+        RealAudioEngine.shared.updateSinkSpatialProperties(deviceID: deviceID)
     }
     
     public func getSpatialPan(for deviceID: AudioObjectID) -> (panL: Float, panR: Float) {

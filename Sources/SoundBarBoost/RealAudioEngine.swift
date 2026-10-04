@@ -355,7 +355,8 @@ public final class MultiSinkAudioDSP {
         isVocalBoost: Bool
     ) {
         if abs(sink.currentDelaySamples - sink.targetDelaySamples) > 0.5 {
-            sink.currentDelaySamples = sink.targetDelaySamples
+            let diff = sink.targetDelaySamples - sink.currentDelaySamples
+            sink.currentDelaySamples += diff * 0.05
         }
         let targetOffset: Double = 1024.0 + max(0.0, sink.currentDelaySamples)
         
@@ -545,15 +546,73 @@ public final class MultiSinkAudioDSP {
                 
                 let wetMix = Float(max(0.15, min(0.42, 0.22 * atmosRoom)))
                 
-                // Final 3D Spatial Assembly:
-                // - mid: solid phantom center vocals & dialogue
-                // - expandedSideL/R: wide wrap-around soundstage
-                // - surrL/R: surround depth
-                // - heightL/R: elevated spatial dome
-                // - hall: atmospheric cinema room space
-                // - sub: deep chest-thumping bass foundation
-                rawL = mid + expandedSideL + (surrL * 0.42) + (heightL * 0.40) + (hallL * wetMix) + subL
-                rawR = mid - expandedSideR + (surrR * 0.42) + (heightR * 0.40) + (hallR * wetMix) + subR
+                // Final 3D Spatial Assembly with Physical Speaker Allocation:
+                let role = sink.spatialRole
+                let dist = sink.distanceMeters
+                
+                let midGain: Float
+                let sideGain: Float
+                let surrGain: Float
+                let heightGain: Float
+                let hallGain: Float
+                let subGain: Float
+                
+                switch role {
+                case .frontCenter:
+                    // MacBook / Screen Front Center: Focused dialogue, lead vocal, tight front imaging
+                    // Suppress rear reflections and hall reverberation right at screen
+                    midGain = 1.30
+                    sideGain = 0.55
+                    surrGain = 0.05
+                    heightGain = 0.15
+                    hallGain = wetMix * 0.15
+                    subGain = 0.35 // Prevent small laptop chassis from rattling
+                    
+                case .surroundSatellite:
+                    // Rockbox / Remote Speaker at 2m: Maximize 3D surround envelope, room reflections, overhead dome & sub-bass
+                    let distComp = Float(max(1.0, min(2.5, dist / 1.4)))
+                    midGain = 0.20 // Suppress direct dialogue so speech stays on the laptop screen
+                    sideGain = 1.25 * distComp
+                    surrGain = 1.55 * distComp  // Huge surround sound coming physically from across the room
+                    heightGain = 1.30 * distComp // Atmospheric height dome
+                    hallGain = wetMix * 1.65 * distComp // Room acoustic envelopment
+                    subGain = 1.45 * distComp  // Deep cinematic sub-bass from Rockbox
+                    
+                case .leftChannel:
+                    midGain = 0.75
+                    sideGain = 1.40
+                    surrGain = 0.80
+                    heightGain = 0.50
+                    hallGain = wetMix
+                    subGain = 1.0
+                    
+                case .rightChannel:
+                    midGain = 0.75
+                    sideGain = 1.40
+                    surrGain = 0.80
+                    heightGain = 0.50
+                    hallGain = wetMix
+                    subGain = 1.0
+                    
+                case .fullMix, .auto:
+                    midGain = 1.0
+                    sideGain = 1.0
+                    surrGain = 0.42
+                    heightGain = 0.40
+                    hallGain = wetMix
+                    subGain = 1.0
+                }
+                
+                if role == .leftChannel {
+                    rawL = (mid * midGain) + (expandedSideL * sideGain) + (surrL * surrGain) + (heightL * heightGain) + (hallL * hallGain) + (subL * subGain)
+                    rawR = 0.05 * rawL
+                } else if role == .rightChannel {
+                    rawL = 0.05 * rawR
+                    rawR = (mid * midGain) - (expandedSideR * sideGain) + (surrR * surrGain) + (heightR * heightGain) + (hallR * hallGain) + (subR * subGain)
+                } else {
+                    rawL = (mid * midGain) + (expandedSideL * sideGain) + (surrL * surrGain) + (heightL * heightGain) + (hallL * hallGain) + (subL * subGain)
+                    rawR = (mid * midGain) - (expandedSideR * sideGain) + (surrR * surrGain) + (heightR * heightGain) + (hallR * hallGain) + (subR * subGain)
+                }
             } else if isSpatial {
                 let mid = (rawL + rawR) * 0.5
                 let side = (rawL - rawR) * 0.5 * 1.35
@@ -637,6 +696,12 @@ public final class OutputDeviceSink {
     public let resampleRatio: Double
     public var isBluetooth: Bool
     public var delaySamples: Double
+    
+    // Physical Multi-Speaker Spatial Profile (Lock-Free)
+    public var isBuiltIn: Bool = false
+    public var distanceMeters: Double = 1.0
+    public var angleDegrees: Double = 0.0
+    public var spatialRole: SpatialSpeakerRole = .auto
     
     // Per-sink isolated DSP state (100% thread-safe & lock-free across realtime IOThreads)
     public var readHead: Double = -1.0
@@ -907,6 +972,32 @@ public class RealAudioEngine: ObservableObject {
         }
     }
     
+    public func updateSinkSpatialProperties(deviceID: AudioObjectID) {
+        guard let sink = activeSinks[deviceID] else { return }
+        let devMgr = AudioDeviceManager.shared
+        let pos = devMgr.getSpatialPosition(for: deviceID)
+        let role = devMgr.resolveSpatialRole(for: deviceID)
+        sink.distanceMeters = pos.distance
+        sink.angleDegrees = pos.angle
+        sink.spatialRole = role
+        
+        // Dynamically recalculate acoustic air-flight delays across active sinks
+        if activeSinks.count > 1 {
+            let hasBT = activeSinks.values.contains { $0.isBluetooth }
+            let dists = activeSinks.keys.map { devMgr.getSpatialPosition(for: $0).distance }
+            let maxDist = dists.max() ?? 1.0
+            let syncDelayMs = AudioDSPManager.shared.isSyncCompensationEnabled ? AudioDSPManager.shared.syncDelayMs : 0.0
+            
+            for (id, s) in activeSinks {
+                if !s.isBluetooth && hasBT {
+                    let d = devMgr.getSpatialPosition(for: id).distance
+                    let airDelayMs = max(0.0, (maxDist - d) / 0.343)
+                    s.targetDelaySamples = (syncDelayMs + airDelayMs) * (self.inSampleRate / 1000.0)
+                }
+            }
+        }
+    }
+    
     // MARK: - Multi-Output Simultaneous Routing
     public func startRouting(toOutputDeviceIDs: Set<AudioObjectID>) -> Bool {
         stopRouting()
@@ -961,13 +1052,26 @@ public class RealAudioEngine: ObservableObject {
         var sinks: [AudioObjectID: OutputDeviceSink] = [:]
         let hasBluetooth = validIDs.contains { isBluetoothDevice(deviceID: $0) }
         let syncDelayMs = AudioDSPManager.shared.isSyncCompensationEnabled ? AudioDSPManager.shared.syncDelayMs : 0.0
+        let devMgr = AudioDeviceManager.shared
+        
+        let dists = validIDs.map { devMgr.getSpatialPosition(for: $0).distance }
+        let maxDist = dists.max() ?? 1.0
         
         for devID in validIDs {
-            AudioDeviceManager.shared.ensureHardwareDeviceActive(deviceID: devID)
+            devMgr.ensureHardwareDeviceActive(deviceID: devID)
             let outRate = getDeviceSampleRate(deviceID: devID)
             let ratio = self.inSampleRate / max(8000.0, outRate)
             let isBT = isBluetoothDevice(deviceID: devID)
-            let delaySamples = (!isBT && hasBluetooth && validIDs.count > 1) ? (syncDelayMs * (self.inSampleRate / 1000.0)) : 0.0
+            let devName = getDeviceName(deviceID: devID).lowercased()
+            let isBuiltIn = devName.contains("macbook") || devName.contains("динамики") || devName.contains("built-in")
+            
+            let pos = devMgr.getSpatialPosition(for: devID)
+            let role = devMgr.resolveSpatialRole(for: devID)
+            
+            // Acoustic air-flight delay: sound travels 1m in ~2.91ms (0.343 m/ms). Closer speaker delayed so wavefronts arrive together.
+            let airDelayMs = (!isBT && validIDs.count > 1) ? max(0.0, (maxDist - pos.distance) / 0.343) : 0.0
+            let totalDelayMs = (!isBT && hasBluetooth && validIDs.count > 1) ? (syncDelayMs + airDelayMs) : 0.0
+            let delaySamples = totalDelayMs * (self.inSampleRate / 1000.0)
             
             let sink = OutputDeviceSink(
                 deviceID: devID,
@@ -976,7 +1080,11 @@ public class RealAudioEngine: ObservableObject {
                 isBluetooth: isBT,
                 delaySamples: delaySamples
             )
-            sink.volumeGain = AudioDeviceManager.shared.getVolumeForDevice(devID)
+            sink.isBuiltIn = isBuiltIn
+            sink.distanceMeters = pos.distance
+            sink.angleDegrees = pos.angle
+            sink.spatialRole = role
+            sink.volumeGain = devMgr.getVolumeForDevice(devID)
             sink.eq.update(gains: AudioDSPManager.shared.bands.map { $0.gain }, sampleRate: Float(outRate))
             
             var outProc: AudioDeviceIOProcID?

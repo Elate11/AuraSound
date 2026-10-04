@@ -905,6 +905,32 @@ public struct MainPopoverView: View {
                 }
             }
             
+            // Spatial Speaker Role Selector
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Text("SPATIAL ROLE:")
+                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                        .foregroundColor(TermTheme.dimText)
+                    Text(devManager.resolveSpatialRole(for: device.id).rawValue)
+                        .font(.system(size: 9.5, weight: .black, design: .monospaced))
+                        .foregroundColor(TermTheme.greenBright)
+                    Spacer()
+                }
+                HStack(spacing: 4) {
+                    let roles: [SpatialSpeakerRole] = [.auto, .frontCenter, .surroundSatellite]
+                    ForEach(roles, id: \.self) { (r: SpatialSpeakerRole) in
+                        let isCur = (devManager.getSpatialRole(for: device.id) == r)
+                        TermButton(
+                            title: r.rawValue,
+                            isActive: isCur,
+                            color: isCur ? TermTheme.greenBright : TermTheme.dimText
+                        ) {
+                            devManager.setSpatialRole(for: device.id, role: r)
+                        }
+                    }
+                }
+            }
+            
             // 1. Distance Setting (0.5m to 5.0m)
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
@@ -913,17 +939,17 @@ public struct MainPopoverView: View {
                         .foregroundColor(TermTheme.cyan)
                     Spacer()
                     HStack(spacing: 4) {
-                        TermButton(title: "1.0m", color: TermTheme.cyan) {
-                            devManager.setSpatialPosition(for: device.id, angle: pos.angle, distance: 1.0)
+                        TermButton(title: "0.8m", color: TermTheme.cyan) {
+                            devManager.setSpatialPosition(for: device.id, angle: pos.angle, distance: 0.8)
+                        }
+                        TermButton(title: "1.5m", color: TermTheme.cyan) {
+                            devManager.setSpatialPosition(for: device.id, angle: pos.angle, distance: 1.5)
                         }
                         TermButton(title: "2.0m", color: TermTheme.cyan) {
                             devManager.setSpatialPosition(for: device.id, angle: pos.angle, distance: 2.0)
                         }
                         TermButton(title: "3.0m", color: TermTheme.cyan) {
                             devManager.setSpatialPosition(for: device.id, angle: pos.angle, distance: 3.0)
-                        }
-                        TermButton(title: "4.0m", color: TermTheme.cyan) {
-                            devManager.setSpatialPosition(for: device.id, angle: pos.angle, distance: 4.0)
                         }
                     }
                 }
