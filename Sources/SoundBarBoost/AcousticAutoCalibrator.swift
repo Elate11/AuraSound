@@ -99,6 +99,20 @@ public class AcousticAutoCalibrator: ObservableObject {
     
     public init() {}
     
+    deinit {
+        stopContinuousMicRecording()
+    }
+    
+    public func cancelCalibration() {
+        RealAudioEngine.shared.endProbeSession()
+        stopContinuousMicRecording()
+        DispatchQueue.main.async {
+            self.isCalibrating = false
+            self.stage = .idle
+            self.statusMessage = "Калибровка отменена"
+        }
+    }
+    
     public func startAutoCalibration() {
         let selectedIDs = AudioDeviceManager.shared.selectedDeviceIDs
         let selectedArray = Array(selectedIDs)

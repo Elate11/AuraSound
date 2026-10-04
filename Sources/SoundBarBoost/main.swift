@@ -9,9 +9,6 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         
         statusBarController = StatusBarController()
         
-        // Ensure Bluetooth Hi-Fi protection
-        RealAudioEngine.shared.ensureHiFiBluetoothMode()
-        
         // Auto start audio routing pipeline on launch
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             let mgr = AudioDeviceManager.shared

@@ -888,7 +888,6 @@ public class RealAudioEngine: ObservableObject {
     
     public init() {
         checkBlackHoleAvailability()
-        ensureHiFiBluetoothMode()
     }
     
     public func checkBlackHoleAvailability() {
@@ -1048,8 +1047,6 @@ public class RealAudioEngine: ObservableObject {
     // MARK: - Multi-Output Simultaneous Routing
     public func startRouting(toOutputDeviceIDs: Set<AudioObjectID>) -> Bool {
         stopRouting(restoreDefaultDevice: false)
-        
-        ensureHiFiBluetoothMode()
         
         let captureID = findInputDevice(nameSubstring: "Background Music") ?? findInputDevice(nameSubstring: "BlackHole")
         guard let virtualID = captureID else {
