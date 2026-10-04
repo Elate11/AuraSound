@@ -156,22 +156,22 @@ public class AudioDSPManager: ObservableObject {
     @Published public var isVocalBoostEnabled: Bool = false
     
     // MARK: - Dolby Atmos 3D Spatial Audio
-    @Published public var isAtmosEnabled: Bool = true {
+    @Published public var isAtmosEnabled: Bool = false {
         didSet { saveState() }
     }
     @Published public var atmosMode: String = "CINEMA" {
         didSet { saveState() }
     }
-    @Published public var atmosRoomSize: Double = 1.15 {
+    @Published public var atmosRoomSize: Double = 0.70 {
         didSet { saveState() }
     }
-    @Published public var atmosSurroundWidth: Double = 1.45 {
+    @Published public var atmosSurroundWidth: Double = 2.40 {
         didSet { saveState() }
     }
-    @Published public var atmosElevation: Double = 35.0 {
+    @Published public var atmosElevation: Double = 65.0 {
         didSet { saveState() }
     }
-    @Published public var atmosBassExciter: Double = 1.35 {
+    @Published public var atmosBassExciter: Double = 1.50 {
         didSet { saveState() }
     }
     @Published public var physicalSpeakerDistance: Double = 2.0 {
@@ -180,28 +180,38 @@ public class AudioDSPManager: ObservableObject {
             AudioDeviceManager.shared.updateRemoteSpeakerDistance(physicalSpeakerDistance)
         }
     }
-    @Published public var spatialIntensity3D: Double = 1.6 {
+    @Published public var spatialIntensity3D: Double = 2.4 {
         didSet { saveState() }
     }
     
     public func selectAtmosMode(_ mode: String) {
         atmosMode = mode
+        isAtmosEnabled = true
         switch mode {
+        case "HEADPHONE", "SMALL ROOM":
+            atmosRoomSize = 0.65
+            atmosSurroundWidth = 2.40
+            spatialIntensity3D = 2.4
+            atmosElevation = 65.0
+            atmosBassExciter = 1.45
         case "CINEMA":
             atmosRoomSize = 1.40
-            atmosSurroundWidth = 1.70
-            atmosElevation = 50.0
-            atmosBassExciter = 1.55
+            atmosSurroundWidth = 2.25
+            spatialIntensity3D = 2.2
+            atmosElevation = 70.0
+            atmosBassExciter = 1.70
         case "MUSIC":
-            atmosRoomSize = 0.95
-            atmosSurroundWidth = 1.50
-            atmosElevation = 30.0
-            atmosBassExciter = 1.25
-        case "360 SPATIAL":
-            atmosRoomSize = 1.70
+            atmosRoomSize = 1.00
             atmosSurroundWidth = 1.95
-            atmosElevation = 75.0
-            atmosBassExciter = 1.45
+            spatialIntensity3D = 1.9
+            atmosElevation = 50.0
+            atmosBassExciter = 1.40
+        case "360 SPATIAL":
+            atmosRoomSize = 1.80
+            atmosSurroundWidth = 2.60
+            spatialIntensity3D = 2.8
+            atmosElevation = 85.0
+            atmosBassExciter = 1.65
         default:
             break
         }
@@ -346,15 +356,20 @@ public class AudioDSPManager: ObservableObject {
     
     public func applyPreset(_ preset: EQPreset) {
         selectedPreset = preset
+        self.isEQEnabled = true
+        RealAudioEngine.shared.setEQBypass(false)
         for i in 0..<min(bands.count, preset.gains.count) {
             bands[i].gain = preset.gains[i]
         }
         RealAudioEngine.shared.updateBands(gains: bands.map { $0.gain })
+        saveState()
     }
     
     public func updateBand(index: Int, gain: Double) {
         guard index >= 0 && index < bands.count else { return }
         bands[index].gain = max(-24.0, min(24.0, gain))
+        self.isEQEnabled = true
+        RealAudioEngine.shared.setEQBypass(false)
         RealAudioEngine.shared.updateBands(gains: bands.map { $0.gain })
         
         if selectedPreset.name != "Custom" {
@@ -467,7 +482,7 @@ public class AudioDSPManager: ObservableObject {
         if let at = UserDefaults.standard.object(forKey: "Aura_IsAtmos") as? Bool {
             self.isAtmosEnabled = at
         } else {
-            self.isAtmosEnabled = true
+            self.isAtmosEnabled = false
         }
         if let d = UserDefaults.standard.object(forKey: "Aura_SyncDelayMs") as? Double {
             self.syncDelayMs = d

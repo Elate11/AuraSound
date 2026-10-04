@@ -86,7 +86,7 @@ public class AudioDeviceManager: ObservableObject {
     
     @Published public var outputDevices: [AudioDevice] = []
     @Published public var selectedDeviceIDs: Set<AudioObjectID> = []
-    @Published public var masterVolume: Float = 0.85
+    @Published public var masterVolume: Float = 1.0
     @Published public var deviceVolumes: [AudioObjectID: Float] = [:]
     public var deviceBaseLevels: [AudioObjectID: Float] = [:]
     
@@ -181,7 +181,7 @@ public class AudioDeviceManager: ObservableObject {
             }
         }
         
-        DispatchQueue.main.async {
+        let updateBlock = {
             self.outputDevices = devices
             
             // Clean up any previously selected HDMI / monitor devices
@@ -207,6 +207,12 @@ public class AudioDeviceManager: ObservableObject {
             for id in self.selectedDeviceIDs {
                 self.ensureHardwareDeviceActive(deviceID: id)
             }
+        }
+        
+        if Thread.isMainThread {
+            updateBlock()
+        } else {
+            DispatchQueue.main.async(execute: updateBlock)
         }
     }
     
@@ -279,8 +285,8 @@ public class AudioDeviceManager: ObservableObject {
     }
     
     public var virtualCaptureDeviceID: AudioObjectID? {
-        return RealAudioEngine.shared.findInputDevice(nameSubstring: "Background Music")
-            ?? RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole")
+        return RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole")
+            ?? RealAudioEngine.shared.findInputDevice(nameSubstring: "Background Music")
     }
     
     private var registeredVolumeListenerDeviceIDs: Set<AudioObjectID> = []
@@ -408,10 +414,21 @@ public class AudioDeviceManager: ObservableObject {
         let isMulti = selectedDeviceIDs.count > 1
         guard isMulti else { return .fullMix }
         
-        let dev = outputDevices.first { $0.id == deviceID }
-        let name = dev?.name.lowercased() ?? ""
-        let isBuiltIn = dev?.transportType == kAudioDeviceTransportTypeBuiltIn || name.contains("macbook") || name.contains("динамики")
-        if isBuiltIn {
+        let pos = getSpatialPosition(for: deviceID)
+        
+        // Panned Left / Right configuration
+        if pos.angle < -25.0 && pos.angle > -155.0 {
+            return .leftChannel
+        }
+        if pos.angle > 25.0 && pos.angle < 155.0 {
+            return .rightChannel
+        }
+        
+        // Front Screen vs Surround Satellite configuration based on distance
+        let allPositions = selectedDeviceIDs.map { (id: $0, pos: getSpatialPosition(for: $0)) }
+        let sortedByDist = allPositions.sorted { $0.pos.distance < $1.pos.distance }
+        
+        if let closest = sortedByDist.first, closest.id == deviceID {
             return .frontCenter
         } else {
             return .surroundSatellite
@@ -466,7 +483,12 @@ public class AudioDeviceManager: ObservableObject {
         // Panning curve preserving stereo energy
         let panL = Float(1.0 - max(0.0, (pan - 0.5) * 1.4))
         let panR = Float(1.0 - max(0.0, (0.5 - pan) * 1.4))
-        return (panL: max(0.2, min(1.0, panL)), panR: max(0.2, min(1.0, panR)))
+        
+        // Distance attenuation factor (natural room inverse-square law)
+        let dist = Float(max(0.5, min(5.0, pos.distance)))
+        let distGain = 1.0 / sqrt(1.0 + max(0.0, dist - 0.8) * 0.70)
+        
+        return (panL: max(0.15, min(1.0, panL)) * distGain, panR: max(0.15, min(1.0, panR)) * distGain)
     }
     
     public func ensureBlackHoleUnmuted() {

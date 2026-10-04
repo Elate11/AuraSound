@@ -128,19 +128,36 @@ public class MultiBandEQ {
     var filtersL: [BiquadFilter] = (0..<10).map { _ in BiquadFilter() }
     var filtersR: [BiquadFilter] = (0..<10).map { _ in BiquadFilter() }
     let freqs: [Float] = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+    public private(set) var isBypassed: Bool = true
     
     public init() {}
     
     public func update(gains: [Double], sampleRate: Float = 44100) {
+        var anyNonZero = false
         for (i, freq) in freqs.enumerated() {
-            let gain = (i < gains.count) ? Float(gains[i]) : 0.0
-            filtersL[i].setPeaking(frequency: freq, sampleRate: sampleRate, gainDb: gain)
-            filtersR[i].setPeaking(frequency: freq, sampleRate: sampleRate, gainDb: gain)
+            let gain = Float((i < gains.count) ? gains[i] : 0.0)
+            if abs(gain) > 0.05 { anyNonZero = true }
+            if i == 0 {
+                filtersL[i].setLowShelf(frequency: 80.0, sampleRate: sampleRate, gainDb: gain)
+                filtersR[i].setLowShelf(frequency: 80.0, sampleRate: sampleRate, gainDb: gain)
+            } else if i == 9 {
+                filtersL[i].setHighShelf(frequency: 10000.0, sampleRate: sampleRate, gainDb: gain)
+                filtersR[i].setHighShelf(frequency: 10000.0, sampleRate: sampleRate, gainDb: gain)
+            } else {
+                filtersL[i].setPeaking(frequency: freq, sampleRate: sampleRate, gainDb: gain, q: 1.15)
+                filtersR[i].setPeaking(frequency: freq, sampleRate: sampleRate, gainDb: gain, q: 1.15)
+            }
         }
+        self.isBypassed = !anyNonZero
+    }
+    
+    public func setBypass(_ bypass: Bool) {
+        self.isBypassed = bypass
     }
     
     @inline(__always)
     public func process(left: Float, right: Float) -> (Float, Float) {
+        if isBypassed { return (left, right) }
         var l = left
         var r = right
         for i in 0..<10 {
@@ -151,6 +168,7 @@ public class MultiBandEQ {
     }
     
     public func reset() {
+        self.isBypassed = true
         filtersL.forEach { $0.reset() }
         filtersR.forEach { $0.reset() }
     }
@@ -342,21 +360,18 @@ public final class MultiSinkAudioDSP {
         return (l, r, smoothedSpectrum)
     }
     
-    /// Continuous rational studio soft-clipper: 100% bit-exact linear below knee (0.82),
-    /// perfectly smooth C1-continuous curvature above knee, strictly bounded < 0.985.
-    /// Completely eliminates digital hard clipping, harsh odd harmonics, and wheezing.
+    /// Continuous rational studio soft-clipper: 100% bit-exact linear below knee (0.95),
+    /// perfectly transparent dynamic range, strictly bounded < 1.00.
+    /// Completely eliminates harsh odd harmonics, wheezing, and unwanted distortion.
     @inline(__always)
     public static func studioSoftClip(_ x: Float) -> Float {
-        let knee: Float = 0.82
-        let ceiling: Float = 0.985
         let absX = abs(x)
-        if absX <= knee {
+        if absX <= 0.95 {
             return x
         }
-        let range = ceiling - knee
-        let excess = (absX - knee) / range
-        let compressed = excess / (1.0 + excess)
-        let out = knee + compressed * range
+        let excess = absX - 0.95
+        let compressed = excess / (1.0 + excess) * 0.045
+        let out = 0.95 + compressed
         return x < 0 ? -out : out
     }
     
@@ -376,21 +391,16 @@ public final class MultiSinkAudioDSP {
             let diff = sink.targetDelaySamples - sink.currentDelaySamples
             sink.currentDelaySamples += diff * 0.05
         }
-        let targetOffset: Double = 1024.0 + max(0.0, sink.currentDelaySamples)
+        let targetOffset: Double = 3072.0 + max(0.0, sink.currentDelaySamples)
         
         var rHead = sink.readHead
         if rHead < 0 {
             if Double(writeHead) < targetOffset {
-                if Double(writeHead) >= Double(count) * 2.0 {
-                    rHead = 0.0
-                    sink.readHead = rHead
-                } else {
-                    for i in 0..<count {
-                        leftOut[i] = 0
-                        rightOut[i] = 0
-                    }
-                    return
+                for i in 0..<count {
+                    leftOut[i] = 0
+                    rightOut[i] = 0
                 }
+                return
             } else {
                 rHead = max(0.0, Double(writeHead) - targetOffset)
                 sink.readHead = rHead
@@ -403,28 +413,26 @@ public final class MultiSinkAudioDSP {
         let needed = Double(count) * ratio
         
         if available < needed {
-            // Buffer underrun: silence and resync to target offset
+            // Buffer underrun protection: gracefully realign without clicking or dumping harsh static
+            rHead = max(0.0, Double(writeHead) - targetOffset)
+            sink.readHead = rHead
             for i in 0..<count {
                 leftOut[i] = 0
                 rightOut[i] = 0
             }
-            sink.readHead = max(0.0, Double(writeHead) - targetOffset)
             return
         }
         
-        // Large drift resync ONLY on true hardware stall / sleep / wake
-        if available > (targetOffset * 4.0) || available < 0 {
+        // Large drift resync ONLY on true hardware stall / sleep / wake (> 6x target offset or negative)
+        if available > (targetOffset * 6.0) || available < 0 {
             rHead = max(0.0, Double(writeHead) - targetOffset)
             sink.readHead = rHead
-        } else {
-            // Smooth, click-free clock crystal synchronization (deadband +-256 samples)
-            let drift = available - targetOffset
-            if drift > 256.0 {
-                rHead += 0.005
-            } else if drift < -256.0 {
-                rHead -= 0.005
-            }
         }
+        
+        let drift = available - targetOffset
+        // Adaptive clock crystal tracking: smooth fractional frequency pull (max +-0.05%)
+        let pullFactor = max(-0.0005, min(0.0005, drift * 0.0000002))
+        let effectiveRatio = ratio * (1.0 + pullFactor)
         
         // Precompute Dolby Atmos spatial parameters ONCE per buffer (ZERO allocation in inner loop)
         let dspMgr = AudioDSPManager.shared
@@ -453,20 +461,47 @@ public final class MultiSinkAudioDSP {
             sink.viperClarityFilterR.setHighShelf(frequency: 3500.0, sampleRate: 48000.0, gainDb: viper.viperClarityGain)
         }
         
+        let is1to1 = abs(ratio - 1.0) < 0.0001
+        
         for i in 0..<count {
             let index0 = Int(floor(rHead))
-            let frac = Float(rHead - Double(index0))
-            let index1 = index0 + 1
             
-            let sampleL0 = bufferL[index0 & mask]
-            let sampleL1 = bufferL[index1 & mask]
-            var rawL = sampleL0 + (sampleL1 - sampleL0) * frac
+            var rawL: Float
+            var rawR: Float
             
-            let sampleR0 = bufferR[index0 & mask]
-            let sampleR1 = bufferR[index1 & mask]
-            var rawR = sampleR0 + (sampleR1 - sampleR0) * frac
+            if is1to1 {
+                // 100% bit-exact direct playback without resampling: pristine highs and transients
+                rawL = bufferL[index0 & mask]
+                rawR = bufferR[index0 & mask]
+            } else {
+                let frac = Float(rHead - Double(index0))
+                let im1 = index0 - 1
+                let i0 = index0
+                let i1 = index0 + 1
+                let i2 = index0 + 2
+                
+                let ym1L = bufferL[im1 & mask]
+                let y0L  = bufferL[i0 & mask]
+                let y1L  = bufferL[i1 & mask]
+                let y2L  = bufferL[i2 & mask]
+                let c0L = y0L
+                let c1L = 0.5 * (y1L - ym1L)
+                let c2L = ym1L - 2.5 * y0L + 2.0 * y1L - 0.5 * y2L
+                let c3L = 0.5 * (y2L - ym1L) + 1.5 * (y0L - y1L)
+                rawL = ((c3L * frac + c2L) * frac + c1L) * frac + c0L
+                
+                let ym1R = bufferR[im1 & mask]
+                let y0R  = bufferR[i0 & mask]
+                let y1R  = bufferR[i1 & mask]
+                let y2R  = bufferR[i2 & mask]
+                let c0R = y0R
+                let c1R = 0.5 * (y1R - ym1R)
+                let c2R = ym1R - 2.5 * y0R + 2.0 * y1R - 0.5 * y2R
+                let c3R = 0.5 * (y2R - ym1R) + 1.5 * (y0R - y1R)
+                rawR = ((c3R * frac + c2R) * frac + c1R) * frac + c0R
+            }
             
-            rHead += ratio
+            rHead += effectiveRatio
             
             // 1. Equalizer (Per-Sink Isolated Filter)
             if isEQEnabled {
@@ -501,153 +536,134 @@ public final class MultiSinkAudioDSP {
                 rawR = rawR - 0.12 * rawR * abs(rawR)
             }
             
-            // 4. Maximum Impact Dolby Atmos 7.1.4 3D Spatializer
+            // 4. Maximum Impact Dolby Atmos 7.1.4 3D Spatializer (Multiband Frequency-Split Spatial Processing)
             if isAtmos {
-                // Step A: Mid / Side Spatial Domain Separation
+                // Center dialogue/vocals & mid-frequency anchor
                 let mid = (rawL + rawR) * 0.5
                 let side = (rawL - rawR) * 0.5
                 
-                // Step B: Haas Interaural Crosstalk Cancellation on Side Channel (16 samples ~0.33ms)
-                sink.xtalkL[sink.xtalkHead & 63] = side
-                sink.xtalkR[sink.xtalkHead & 63] = -side
-                let xL = sink.xtalkL[(sink.xtalkHead - 16) & 63]
-                let xR = sink.xtalkR[(sink.xtalkHead - 16) & 63]
+                // MULTIBAND FREQUENCY SPLIT:
+                // Lows (<180Hz) are kept strictly mono in the center anchor to prevent phase cancellation & distortion.
+                let sideLow = sink.crossoverLowL.process(sample: side)
+                let sideNoBass = side - sideLow
+                let sideHigh = sink.crossoverHighL.process(sample: sideNoBass)
+                let sideMid = sideNoBass - sideHigh
+                
+                // --- A. SCHROEDER ALL-PASS 3D PHASE DECORRELATOR (Flat unity gain |H(w)| == 1.0, 0dB resonance) ---
+                let apIn = mid * 0.35
+                let apIndex = sink.apHead0 % 225
+                let vDelayed = sink.apL0[apIndex]
+                let g: Float = 0.55
+                let v = apIn + g * vDelayed
+                let decorrelated3D = -g * v + vDelayed
+                sink.apL0[apIndex] = v
+                sink.apHead0 += 1
+                
+                // --- B. BINAURAL HAAS ACOUSTIC CROSSTALK CANCELLATION ---
+                // Delay buffer: 18 samples (~0.38 ms at 48kHz, exact acoustic interaural head width)
+                sink.xtalkL[sink.xtalkHead & 63] = sideHigh
+                let delayedSideHigh = sink.xtalkL[(sink.xtalkHead - 18) & 63]
                 sink.xtalkHead += 1
                 
-                // Super-wide holographic 3D soundstage
-                let widthFactor = Float(atmosWidth)
-                let expandedSideL = (side - xR * 0.65) * (0.85 + (widthFactor - 1.0) * 0.95)
-                let expandedSideR = (-side - xL * 0.65) * (0.85 + (widthFactor - 1.0) * 0.95)
+                let width = min(2.0, max(0.8, Float(atmosWidth) * 0.75))
+                let intensity = min(2.0, max(0.5, Float(dspMgr.spatialIntensity3D) * 0.70))
                 
-                // Step C: Virtual 7.1.4 Surround Upmixing with Physical Distance Reflection
-                sink.surroundDelayL[sink.surroundHead & 4095] = expandedSideL
-                sink.surroundDelayR[sink.surroundHead & 4095] = expandedSideR
+                // Spatialized high-frequency binaural cues with crosstalk cancellation
+                let spatialHigh = (sideHigh * width * 1.15) - (delayedSideHigh * 0.30 * intensity)
                 
-                let dist = sink.distanceMeters
-                // Reflection delay scales physically with distance: ~12ms at 0.8m to ~38ms at 4.0m
-                let delayMs = Float(8.0 + dist * 7.5)
-                let delaySamples = min(3800, max(128, Int(delayMs * 48.0)))
-                let surrL = sink.surroundDelayL[(sink.surroundHead - delaySamples) & 4095]
-                let surrR = sink.surroundDelayR[(sink.surroundHead - delaySamples) & 4095]
-                sink.surroundHead += 1
+                // Expansive focused stereo width for mids
+                let spatialMid = sideMid * min(1.6, width * 0.95)
                 
-                // Step D: Cinema Sub-Bass Exciter (Deep punchy cinema low-end)
-                var subL: Float = 0
-                var subR: Float = 0
-                if atmosSub > 1.02 {
-                    let subFactor = Float(atmosSub - 1.0) * 1.35
-                    let lowL = sink.subBassL.process(sample: mid)
-                    let lowR = sink.subBassR.process(sample: mid)
-                    subL = lowL * subFactor
-                    subR = lowR * subFactor
-                }
+                // Total spatial side signal: clean stereo width + pristine 3D phase decorrelation
+                let spatialSide = spatialMid + spatialHigh + (decorrelated3D * 0.35 * intensity)
                 
-                // Step E: Height / Elevation Overheads (Air and 3D presence)
+                // --- C. DOLBY ATMOS HEIGHT / PINNA ELEVATION CUES (Overhead 3D Sound) ---
                 var heightL: Float = 0
                 var heightR: Float = 0
                 if atmosElev > 0.05 {
-                    let hL = sink.heightFilterL.process(sample: expandedSideL)
-                    let hR = sink.heightFilterR.process(sample: expandedSideR)
-                    let elevGain = atmosElev * 0.70
-                    heightL = (hL - expandedSideL) * elevGain
-                    heightR = (hR - expandedSideR) * elevGain
+                    let elevFactor = min(1.0, Float(atmosElev)) * 0.35
+                    let pinnaL = sink.heightFilterL.process(sample: sideHigh + (decorrelated3D * 0.20))
+                    let pinnaR = sink.heightFilterR.process(sample: -sideHigh - (decorrelated3D * 0.20))
+                    heightL = (pinnaL - sideHigh) * elevFactor
+                    heightR = (pinnaR - (-sideHigh)) * elevFactor
                 }
                 
-                // Step F: Cinema Hall Acoustic Envelopment (Scales with room size & physical distance)
-                let roomIn = (expandedSideL - expandedSideR) * 0.40
-                let cFeedback: Float = min(0.68, 0.28 + Float(dist * 0.06) + Float(atmosRoom) * 0.05)
+                // --- D. CINEMA / STUDIO 3D EARLY REFLECTIONS (Acoustic spatial boundary) ---
+                let roomFactor = min(1.0, Float(atmosRoom) * 0.25)
+                sink.surroundDelayL[sink.surroundHead & 4095] = sideNoBass + (decorrelated3D * 0.20)
+                let refl1 = sink.surroundDelayL[(sink.surroundHead - 190) & 4095] * 0.22
+                let refl2 = sink.surroundDelayL[(sink.surroundHead - 390) & 4095] * 0.16
+                let refl3 = sink.surroundDelayL[(sink.surroundHead - 280) & 4095] * -0.20
+                let refl4 = sink.surroundDelayL[(sink.surroundHead - 560) & 4095] * -0.14
+                sink.surroundHead += 1
                 
-                let c0 = sink.combL0[sink.combHead0 % 1116]
-                sink.combL0[sink.combHead0 % 1116] = roomIn + c0 * cFeedback
-                let c1 = sink.combL1[sink.combHead1 % 1188]
-                sink.combL1[sink.combHead1 % 1188] = roomIn + c1 * cFeedback
-                let c2 = sink.combR0[sink.combHead2 % 1139]
-                sink.combR0[sink.combHead2 % 1139] = roomIn + c2 * cFeedback
-                let c3 = sink.combR1[sink.combHead3 % 1211]
-                sink.combR1[sink.combHead3 % 1211] = roomIn + c3 * cFeedback
+                let roomL = (refl1 + refl2) * roomFactor
+                let roomR = (refl3 + refl4) * roomFactor
                 
-                sink.combHead0 += 1
-                sink.combHead1 += 1
-                sink.combHead2 += 1
-                sink.combHead3 += 1
+                // --- E. CINEMA / NEAR-FIELD SUB-BASS IMPACT (Centered, punchy LFE) ---
+                var subLFE: Float = 0
+                if atmosSub > 1.05 {
+                    let subFactor = min(1.0, Float(atmosSub - 1.0)) * 0.40
+                    let filteredSub = sink.subBassL.process(sample: mid)
+                    subLFE = (filteredSub - mid) * subFactor
+                }
                 
-                let hallL = (c0 + c1) * 0.45
-                let hallR = (c2 + c3) * 0.45
-                
-                let wetMix = max(0.18, min(0.68, 0.20 * atmosRoom * Float(dist / 1.4)))
-                
-                // Final 3D Spatial Assembly with Physical Speaker Allocation & 3D Intensity:
+                // --- F. 3D HOLOGRAM SUMMATION WITH CINEMA MATRIXING ---
                 let role = sink.spatialRole
-                let intensity = Float(dspMgr.spatialIntensity3D)
+                let compL: Float
+                let compR: Float
                 
-                let midGain: Float
-                let sideGain: Float
-                let surrGain: Float
-                let heightGain: Float
-                let hallGain: Float
-                let subGain: Float
-                
-                switch role {
-                case .frontCenter:
-                    // MacBook / Screen Front Center: Focused dialogue, lead vocal, tight front imaging
-                    // Dialogue is crystal clear and upfront; room reflections attenuated
-                    midGain = 1.0 + 0.35 * intensity
-                    sideGain = max(0.25, 0.60 - Float(dist - 1.0) * 0.10)
-                    surrGain = 0.04
-                    heightGain = 0.12
-                    hallGain = wetMix * max(0.08, Float(0.20 / dist))
-                    subGain = 0.30
-                    
-                case .surroundSatellite:
-                    // Rockbox / Remote Speaker at 2m+: Maximize 3D surround envelope, room reflections, overhead dome & sub-bass
-                    let distCurve = Float(max(1.0, min(3.0, pow(dist / 1.3, 1.2))))
-                    midGain = max(0.05, Float(0.35 - dist * 0.10)) // Speech strongly anchored to laptop screen
-                    sideGain = 1.20 * distCurve * intensity
-                    surrGain = 1.50 * distCurve * intensity   // Massive 3D surround envelopment
-                    heightGain = 1.35 * distCurve * intensity  // Atmos overhead ceiling dome
-                    hallGain = wetMix * 1.70 * distCurve * intensity // Deep cinema hall acoustic atmosphere
-                    subGain = 1.45 * distCurve * intensity   // Resonant sub-bass punch
-                    
-                case .leftChannel:
-                    midGain = 0.75
-                    sideGain = 1.40 * intensity
-                    surrGain = 0.80 * intensity
-                    heightGain = 0.50 * intensity
-                    hallGain = wetMix
-                    subGain = 1.0
-                    
-                case .rightChannel:
-                    midGain = 0.75
-                    sideGain = 1.40 * intensity
-                    surrGain = 0.80 * intensity
-                    heightGain = 0.50 * intensity
-                    hallGain = wetMix
-                    subGain = 1.0
-                    
-                case .fullMix, .auto:
-                    midGain = 1.0
-                    sideGain = 1.0 * intensity
-                    surrGain = 0.42 * intensity
-                    heightGain = 0.40 * intensity
-                    hallGain = wetMix
-                    subGain = 1.0
-                }
+                // Distance reverberation factor: further speakers carry more room ambiance and surround cues
+                let dist = Float(max(0.5, min(5.0, sink.distanceMeters)))
+                let roomScale = min(1.6, 0.75 + (dist - 0.8) * 0.25)
+                let actualRoomL = roomL * roomScale
+                let actualRoomR = roomR * roomScale
                 
                 if role == .leftChannel {
-                    rawL = (mid * midGain) + (expandedSideL * sideGain) + (surrL * surrGain) + (heightL * heightGain) + (hallL * hallGain) + (subL * subGain)
-                    rawR = 0.05 * rawL
+                    compL = (mid * 0.65) + (spatialSide * 0.55) + (heightL * 0.18) + (actualRoomL * 0.15) + (subLFE * 0.20)
+                    compR = 0.02 * compL
                 } else if role == .rightChannel {
-                    rawL = 0.05 * rawR
-                    rawR = (mid * midGain) - (expandedSideR * sideGain) + (surrR * surrGain) + (heightR * heightGain) + (hallR * hallGain) + (subR * subGain)
+                    let rSide = (mid * 0.65) - (spatialSide * 0.55) + (heightR * 0.18) + (actualRoomR * 0.15) + (subLFE * 0.20)
+                    compL = 0.02 * rSide
+                    compR = rSide
+                } else if role == .frontCenter {
+                    // Cinema Screen / Center Stage: Crystal-clear dialogue, vocal focus, front punch
+                    compL = (mid * 0.82) + (spatialSide * 0.22) + (subLFE * 0.30) + (actualRoomL * 0.08)
+                    compR = (mid * 0.82) - (spatialSide * 0.22) + (subLFE * 0.30) + (actualRoomR * 0.08)
+                } else if role == .surroundSatellite {
+                    // Cinema Surround Array: Immersive 3D side wrap, early reflections, height envelope
+                    compL = (mid * 0.30) + (spatialSide * 0.70) + (heightL * 0.35) + (actualRoomL * 0.35) + (subLFE * 0.15)
+                    compR = (mid * 0.30) - (spatialSide * 0.70) + (heightR * 0.35) + (actualRoomR * 0.35) + (subLFE * 0.15)
                 } else {
-                    rawL = (mid * midGain) + (expandedSideL * sideGain) + (surrL * surrGain) + (heightL * heightGain) + (hallL * hallGain) + (subL * subGain)
-                    rawR = (mid * midGain) - (expandedSideR * sideGain) + (surrR * surrGain) + (heightR * heightGain) + (hallR * hallGain) + (subR * subGain)
+                    // Full 3D Mix
+                    compL = (mid * 0.65) + (spatialSide * 0.45) + (heightL * 0.18) + (actualRoomL * 0.15) + (subLFE * 0.22)
+                    compR = (mid * 0.65) - (spatialSide * 0.45) + (heightR * 0.18) + (actualRoomR * 0.15) + (subLFE * 0.22)
+                }
+                
+                // Automatic Headroom Protection: strictly preserves 0 dBFS ceiling (< 0.95)
+                let maxSpatialPeak = max(abs(compL), abs(compR))
+                if maxSpatialPeak > 0.95 {
+                    let scale = 0.95 / maxSpatialPeak
+                    rawL = compL * scale
+                    rawR = compR * scale
+                } else {
+                    rawL = compL
+                    rawR = compR
                 }
             } else if isSpatial {
                 let mid = (rawL + rawR) * 0.5
                 let side = (rawL - rawR) * 0.5 * 1.35
-                rawL = mid + side
-                rawR = mid - side
+                let compL = mid + side
+                let compR = mid - side
+                let peak = max(abs(compL), abs(compR))
+                if peak > 0.95 {
+                    let s = 0.95 / peak
+                    rawL = compL * s
+                    rawR = compR * s
+                } else {
+                    rawL = compL
+                    rawR = compR
+                }
             }
             
             // 5. Intelligent Loudness Maximizer & Headroom Boost (1.0x to 3.0x = +0dB to +9.5dB)
@@ -655,7 +671,7 @@ public final class MultiSinkAudioDSP {
             let boostedR = rawR * boost
             
             // 6. Transparent Broadcast Peak Limiter & Zero-Clip Engine
-            if isAntiClip {
+            if isAntiClip && (boost > 1.01 || abs(boostedL) > 0.98 || abs(boostedR) > 0.98) {
                 let peak = max(abs(boostedL), abs(boostedR))
                 
                 // Fast attack ensures the envelope catches loud transients instantly (zero overshoot)
@@ -665,8 +681,8 @@ public final class MultiSinkAudioDSP {
                     sink.limiterEnvelope = sink.limiterEnvelope * 0.9997 + peak * 0.0003
                 }
                 
-                let ceiling: Float = 0.95
-                let threshold: Float = 0.82
+                let ceiling: Float = 0.98
+                let threshold: Float = 0.95
                 let targetGain: Float
                 if sink.limiterEnvelope > threshold {
                     targetGain = ceiling / sink.limiterEnvelope
@@ -674,21 +690,18 @@ public final class MultiSinkAudioDSP {
                     targetGain = 1.0
                 }
                 
-                // Immediate gain reduction on attack, smooth transparent recovery on release
+                // Smooth transparent gain adjustment (no abrupt jumps)
                 if targetGain < sink.limiterGain {
-                    sink.limiterGain = min(sink.limiterGain * 0.35 + targetGain * 0.65, targetGain)
+                    sink.limiterGain = sink.limiterGain * 0.85 + targetGain * 0.15
                 } else {
                     sink.limiterGain = sink.limiterGain * 0.9996 + 1.0 * 0.0004
                 }
                 
-                let limitedL = boostedL * sink.limiterGain
-                let limitedR = boostedR * sink.limiterGain
-                
-                leftOut[i] = MultiSinkAudioDSP.studioSoftClip(limitedL)
-                rightOut[i] = MultiSinkAudioDSP.studioSoftClip(limitedR)
+                leftOut[i] = boostedL * sink.limiterGain
+                rightOut[i] = boostedR * sink.limiterGain
             } else {
-                leftOut[i] = MultiSinkAudioDSP.studioSoftClip(boostedL)
-                rightOut[i] = MultiSinkAudioDSP.studioSoftClip(boostedR)
+                leftOut[i] = boostedL
+                rightOut[i] = boostedR
             }
         }
         
@@ -799,22 +812,34 @@ public final class OutputDeviceSink {
     
     public let subBassL: BiquadFilter = {
         let f = BiquadFilter()
-        f.setLowShelf(frequency: 75.0, sampleRate: 48000.0, gainDb: 7.5)
+        f.setLowShelf(frequency: 80.0, sampleRate: 48000.0, gainDb: 4.5)
         return f
     }()
     public let subBassR: BiquadFilter = {
         let f = BiquadFilter()
-        f.setLowShelf(frequency: 75.0, sampleRate: 48000.0, gainDb: 7.5)
+        f.setLowShelf(frequency: 80.0, sampleRate: 48000.0, gainDb: 4.5)
         return f
     }()
     public let heightFilterL: BiquadFilter = {
         let f = BiquadFilter()
-        f.setPeaking(frequency: 8500.0, sampleRate: 48000.0, gainDb: 4.5, q: 1.0)
+        f.setHighShelf(frequency: 7500.0, sampleRate: 48000.0, gainDb: 4.0)
         return f
     }()
     public let heightFilterR: BiquadFilter = {
         let f = BiquadFilter()
-        f.setPeaking(frequency: 8500.0, sampleRate: 48000.0, gainDb: 4.5, q: 1.0)
+        f.setHighShelf(frequency: 7500.0, sampleRate: 48000.0, gainDb: 4.0)
+        return f
+    }()
+    
+    // Multiband Frequency-Splitting Crossover Filters (Small Room & Headphone 3D Mode)
+    public let crossoverLowL: BiquadFilter = {
+        let f = BiquadFilter()
+        f.setLowPass(frequency: 180.0, sampleRate: 48000.0, q: 0.707)
+        return f
+    }()
+    public let crossoverHighL: BiquadFilter = {
+        let f = BiquadFilter()
+        f.setHighPass(frequency: 2200.0, sampleRate: 48000.0, q: 0.707)
         return f
     }()
     
@@ -920,7 +945,12 @@ public class RealAudioEngine: ObservableObject {
     }
     
     public func updateBoost(multiplier: Double) {}
-    public func setEQBypass(_ bypass: Bool) {}
+    public func setEQBypass(_ bypass: Bool) {
+        eqProcessor.setBypass(bypass)
+        for sink in activeSinks.values {
+            sink.eq.setBypass(bypass)
+        }
+    }
     
     public func isBluetoothDevice(deviceID: AudioObjectID) -> Bool {
         let transport = getDeviceTransportType(deviceID: deviceID)
@@ -1018,14 +1048,15 @@ public class RealAudioEngine: ObservableObject {
         }
     }
     
-    public func updateSinkSpatialProperties(deviceID: AudioObjectID) {
-        guard let sink = activeSinks[deviceID] else { return }
+    public func updateSinkSpatialProperties(deviceID: AudioObjectID? = nil) {
         let devMgr = AudioDeviceManager.shared
-        let pos = devMgr.getSpatialPosition(for: deviceID)
-        let role = devMgr.resolveSpatialRole(for: deviceID)
-        sink.distanceMeters = pos.distance
-        sink.angleDegrees = pos.angle
-        sink.spatialRole = role
+        for (id, sink) in activeSinks {
+            let pos = devMgr.getSpatialPosition(for: id)
+            let role = devMgr.resolveSpatialRole(for: id)
+            sink.distanceMeters = pos.distance
+            sink.angleDegrees = pos.angle
+            sink.spatialRole = role
+        }
         
         // Dynamically recalculate acoustic air-flight delays across active sinks
         if activeSinks.count > 1 {
@@ -1035,11 +1066,10 @@ public class RealAudioEngine: ObservableObject {
             let syncDelayMs = AudioDSPManager.shared.isSyncCompensationEnabled ? AudioDSPManager.shared.syncDelayMs : 0.0
             
             for (id, s) in activeSinks {
-                if !s.isBluetooth && hasBT {
-                    let d = devMgr.getSpatialPosition(for: id).distance
-                    let airDelayMs = max(0.0, (maxDist - d) / 0.343)
-                    s.targetDelaySamples = (syncDelayMs + airDelayMs) * (self.inSampleRate / 1000.0)
-                }
+                let d = devMgr.getSpatialPosition(for: id).distance
+                let airDelayMs = max(0.0, (maxDist - d) / 0.343)
+                let btDelayMs = (!s.isBluetooth && hasBT) ? syncDelayMs : 0.0
+                s.targetDelaySamples = (btDelayMs + airDelayMs) * (self.inSampleRate / 1000.0)
             }
         }
     }
@@ -1048,7 +1078,9 @@ public class RealAudioEngine: ObservableObject {
     public func startRouting(toOutputDeviceIDs: Set<AudioObjectID>) -> Bool {
         stopRouting(restoreDefaultDevice: false)
         
-        let captureID = findInputDevice(nameSubstring: "Background Music") ?? findInputDevice(nameSubstring: "BlackHole")
+        let captureID = AudioDeviceManager.shared.virtualCaptureDeviceID
+            ?? findInputDevice(nameSubstring: "BlackHole")
+            ?? findInputDevice(nameSubstring: "Background Music")
         guard let virtualID = captureID else {
             statusMessage = "Virtual audio driver not found"
             hasBlackHole = false
@@ -1224,13 +1256,24 @@ public class RealAudioEngine: ObservableObject {
                 
                 if numChans >= 2 {
                     for i in 0..<frameCount {
-                        outPtr[i * 2] = MultiSinkAudioDSP.studioSoftClip(left[i] * volL)
-                        outPtr[i * 2 + 1] = MultiSinkAudioDSP.studioSoftClip(right[i] * volR)
+                        let sL = left[i] * volL
+                        let sR = right[i] * volR
+                        if dsp.boostMultiplier > 1.01 || abs(sL) > 0.98 || abs(sR) > 0.98 {
+                            outPtr[i * 2] = MultiSinkAudioDSP.studioSoftClip(sL)
+                            outPtr[i * 2 + 1] = MultiSinkAudioDSP.studioSoftClip(sR)
+                        } else {
+                            outPtr[i * 2] = sL
+                            outPtr[i * 2 + 1] = sR
+                        }
                     }
                 } else {
                     for i in 0..<frameCount {
                         let mono = ((left[i] * volL) + (right[i] * volR)) * 0.5
-                        outPtr[i] = MultiSinkAudioDSP.studioSoftClip(mono)
+                        if dsp.boostMultiplier > 1.01 || abs(mono) > 0.98 {
+                            outPtr[i] = MultiSinkAudioDSP.studioSoftClip(mono)
+                        } else {
+                            outPtr[i] = mono
+                        }
                     }
                 }
                 return noErr

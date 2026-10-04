@@ -271,20 +271,6 @@ public class AppVolumeManager: ObservableObject {
                 end tell
                 """
                 self.runAppleScript(script)
-            } else if bundle.contains("yandex") || name.lowercased().contains("яндекс") {
-                if isMute {
-                    self.postKey(pid: target.pid, keyCode: 49) // Spacebar toggle play/pause
-                } else {
-                    let delta = volume - oldVolume
-                    if abs(delta) >= 0.03 {
-                        let steps = min(10, max(1, Int(round(abs(delta) / 0.04))))
-                        let keyCode: CGKeyCode = delta > 0 ? 126 : 125 // Cmd+Up / Cmd+Down
-                        for _ in 0..<steps {
-                            self.postKey(pid: target.pid, keyCode: keyCode, flags: .maskCommand)
-                            usleep(25000)
-                        }
-                    }
-                }
             } else if bundle.contains("soundcloud") || bundle.contains("telegram") || bundle.contains("discord") {
                 if isMute {
                     self.postKey(pid: target.pid, keyCode: 49) // Spacebar toggle play/pause
@@ -305,10 +291,34 @@ public class AppVolumeManager: ObservableObject {
         }
     }
     
+    private func getChildPIDs(parentPID: pid_t) -> [pid_t] {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
+        task.arguments = ["-P", "\(parentPID)"]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        do {
+            try task.run()
+            task.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let str = String(data: data, encoding: .utf8) {
+                return str.split(separator: "\n").compactMap { pid_t($0.trimmingCharacters(in: .whitespaces)) }
+            }
+        } catch {}
+        return []
+    }
+    
     public func applyVolumeViaDriver(target: AppAudioTarget, volume: Float, isMute: Bool) {
         guard let devID = findDriverDeviceID() else { return }
         
-        let rvol: Int32 = isMute ? 0 : Int32(round(max(0.0, min(1.0, volume)) * 100.0))
+        let volClamped = max(0.0, min(1.0, volume))
+        // In the HAL driver, relative volume is calculated as:
+        // theRelativeVolume = pow(rvol / 100.0, 2) * 4.0
+        // - rvol = 50 corresponds to 1.0x (100% volume / unity gain / 0 dB)
+        // - rvol = 100 corresponds to 4.0x (+12 dB boost, which heavily clips normal audio)
+        // By setting rvol = 50 * sqrt(volClamped), theRelativeVolume = volClamped.
+        // This provides clean, distortion-free 0%..100% linear amplitude scaling across the entire slider!
+        let rvol: Int32 = isMute ? 0 : Int32(round(50.0 * sqrt(volClamped)))
         
         var list: [NSDictionary] = [
             [
@@ -320,6 +330,15 @@ public class AppVolumeManager: ObservableObject {
                 "rvol" as NSString: NSNumber(value: rvol)
             ]
         ]
+        
+        // Also register all child helper PIDs (e.g. Electron / Chromium audio services)
+        let childPIDs = getChildPIDs(parentPID: target.pid)
+        for cPid in childPIDs {
+            list.append([
+                "pid" as NSString: NSNumber(value: cPid),
+                "rvol" as NSString: NSNumber(value: rvol)
+            ])
+        }
         
         if target.bundleId.contains("yandex") || target.name.lowercased().contains("яндекс") {
             list.append([

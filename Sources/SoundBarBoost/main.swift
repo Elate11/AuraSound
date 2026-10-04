@@ -10,14 +10,18 @@ public class AppDelegate: NSObject, NSApplicationDelegate {
         statusBarController = StatusBarController()
         
         // Auto start audio routing pipeline on launch
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             let mgr = AudioDeviceManager.shared
             mgr.refreshDevices()
-            let ids = mgr.selectedDeviceIDs
+            var ids = mgr.selectedDeviceIDs
+            if ids.isEmpty {
+                if let dev = mgr.outputDevices.first(where: { !$0.name.contains("BlackHole") && !$0.name.contains("Background Music") }) {
+                    ids = Set([dev.id])
+                    mgr.selectedDeviceIDs = ids
+                }
+            }
             if !ids.isEmpty {
                 _ = RealAudioEngine.shared.startRouting(toOutputDeviceIDs: ids)
-            } else if let dev = mgr.outputDevices.first(where: { !$0.name.contains("BlackHole") }) {
-                _ = RealAudioEngine.shared.startRouting(toOutputDeviceIDs: Set([dev.id]))
             }
         }
     }

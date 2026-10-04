@@ -354,10 +354,39 @@ public struct MainPopoverView: View {
         }
     }
     
+    private var appAvatarImage: NSImage? {
+        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "png"),
+           let img = NSImage(contentsOf: url) {
+            return img
+        }
+        if let img = NSImage(contentsOfFile: "/Applications/AuraSound Max.app/Contents/Resources/AppIcon.png") {
+            return img
+        }
+        if let img = NSImage(contentsOfFile: "/Users/aleksandr/AuraSound/Assets/AppIcon.png") {
+            return img
+        }
+        if let img = NSImage(contentsOfFile: "/Users/aleksandr/AuraSound/docs/logo.png") {
+            return img
+        }
+        return nil
+    }
+    
     // MARK: - ASCII Banner & Engine Power Switch
     private var asciiLogoHeader: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
+                if let avatar = appAvatarImage {
+                    Image(nsImage: avatar)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 26, height: 26)
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(TermTheme.green.opacity(0.6), lineWidth: 1)
+                        )
+                }
+                
                 VStack(alignment: .leading, spacing: 1) {
                     Text("█▀█ █ █ █▀▄ █▀█ █▀ █▀█ █ █ █▄ █ █▀▄")
                         .font(.system(size: 9.5, weight: .black, design: .monospaced))
@@ -879,7 +908,16 @@ public struct MainPopoverView: View {
                     Spacer()
                     
                     TermButton(
-                        title: "CINEMA 3D",
+                        title: "EAR / ROOM",
+                        isActive: dsp.isAtmosEnabled && (dsp.atmosMode == "HEADPHONE" || dsp.atmosMode == "SMALL ROOM"),
+                        color: TermTheme.greenBright
+                    ) {
+                        dsp.isAtmosEnabled = true
+                        dsp.selectAtmosMode("HEADPHONE")
+                    }
+                    
+                    TermButton(
+                        title: "CINEMA",
                         isActive: dsp.isAtmosEnabled && dsp.atmosMode == "CINEMA",
                         color: TermTheme.cyan
                     ) {
@@ -888,7 +926,7 @@ public struct MainPopoverView: View {
                     }
                     
                     TermButton(
-                        title: "MUSIC HIFI",
+                        title: "MUSIC",
                         isActive: dsp.isAtmosEnabled && dsp.atmosMode == "MUSIC",
                         color: TermTheme.green
                     ) {
@@ -897,7 +935,7 @@ public struct MainPopoverView: View {
                     }
                     
                     TermButton(
-                        title: "360 SPATIAL",
+                        title: "360 3D",
                         isActive: dsp.isAtmosEnabled && dsp.atmosMode == "360 SPATIAL",
                         color: TermTheme.amber
                     ) {
@@ -983,7 +1021,7 @@ public struct MainPopoverView: View {
                     .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                     .foregroundColor(TermTheme.cyan)
                 Spacer()
-                Slider(value: $dsp.atmosSurroundWidth, in: 1.0...2.0, step: 0.05)
+                Slider(value: $dsp.atmosSurroundWidth, in: 1.0...3.0, step: 0.05)
                     .frame(width: 170)
                     .accentColor(TermTheme.cyan)
             }
@@ -993,7 +1031,7 @@ public struct MainPopoverView: View {
                     .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                     .foregroundColor(TermTheme.green)
                 Spacer()
-                Slider(value: $dsp.atmosRoomSize, in: 0.5...2.0, step: 0.05)
+                Slider(value: $dsp.atmosRoomSize, in: 0.2...2.5, step: 0.05)
                     .frame(width: 170)
                     .accentColor(TermTheme.green)
             }
@@ -1003,7 +1041,7 @@ public struct MainPopoverView: View {
                     .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                     .foregroundColor(TermTheme.amber)
                 Spacer()
-                Slider(value: $dsp.atmosBassExciter, in: 1.0...1.8, step: 0.05)
+                Slider(value: $dsp.atmosBassExciter, in: 1.0...2.5, step: 0.05)
                     .frame(width: 170)
                     .accentColor(TermTheme.amber)
             }
@@ -1420,26 +1458,87 @@ public struct MainPopoverView: View {
     }
     
     private var eqPresetBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 5) {
-                ForEach(EQPreset.presets) { preset in
-                    let isSelected = dsp.selectedPreset.name == preset.name
-                    TermButton(
-                        title: preset.name.uppercased(),
-                        isActive: isSelected,
-                        color: isSelected ? TermTheme.greenBright : TermTheme.dimText
-                    ) {
-                        dsp.applyPreset(preset)
+        ScrollViewReader { proxy in
+            HStack(spacing: 4) {
+                Button(action: {
+                    selectPreviousPreset(proxy: proxy)
+                }) {
+                    Text("<")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundColor(TermTheme.cyan)
+                        .frame(width: 20, height: 22)
+                        .background(TermTheme.buttonBg)
+                        .overlay(RoundedRectangle(cornerRadius: 3).stroke(TermTheme.cyan.opacity(0.6), lineWidth: 0.8))
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 5) {
+                        ForEach(EQPreset.presets) { preset in
+                            let isSelected = dsp.selectedPreset.name == preset.name
+                            TermButton(
+                                title: preset.name.uppercased(),
+                                isActive: isSelected,
+                                color: isSelected ? TermTheme.greenBright : TermTheme.dimText
+                            ) {
+                                dsp.applyPreset(preset)
+                                withAnimation {
+                                    proxy.scrollTo(preset.name, anchor: .center)
+                                }
+                            }
+                            .id(preset.name)
+                        }
+                        
+                        TermButton(title: "RESET 0dB", color: TermTheme.amber) {
+                            for i in 0..<dsp.bands.count {
+                                dsp.updateBand(index: i, gain: 0.0)
+                            }
+                            dsp.applyPreset(EQPreset.presets[0])
+                        }
                     }
+                    .padding(.vertical, 2)
                 }
                 
-                TermButton(title: "RESET 0dB", color: TermTheme.amber) {
-                    for i in 0..<dsp.bands.count {
-                        dsp.updateBand(index: i, gain: 0.0)
-                    }
+                Button(action: {
+                    selectNextPreset(proxy: proxy)
+                }) {
+                    Text(">")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundColor(TermTheme.cyan)
+                        .frame(width: 20, height: 22)
+                        .background(TermTheme.buttonBg)
+                        .overlay(RoundedRectangle(cornerRadius: 3).stroke(TermTheme.cyan.opacity(0.6), lineWidth: 0.8))
                 }
+                .buttonStyle(PlainButtonStyle())
             }
-            .padding(.vertical, 2)
+        }
+    }
+    
+    private func selectPreviousPreset(proxy: ScrollViewProxy) {
+        let presets = EQPreset.presets
+        if let idx = presets.firstIndex(where: { $0.name == dsp.selectedPreset.name }) {
+            let prevIdx = (idx - 1 + presets.count) % presets.count
+            let prev = presets[prevIdx]
+            dsp.applyPreset(prev)
+            withAnimation {
+                proxy.scrollTo(prev.name, anchor: .center)
+            }
+        } else if let first = presets.first {
+            dsp.applyPreset(first)
+        }
+    }
+    
+    private func selectNextPreset(proxy: ScrollViewProxy) {
+        let presets = EQPreset.presets
+        if let idx = presets.firstIndex(where: { $0.name == dsp.selectedPreset.name }) {
+            let nextIdx = (idx + 1) % presets.count
+            let next = presets[nextIdx]
+            dsp.applyPreset(next)
+            withAnimation {
+                proxy.scrollTo(next.name, anchor: .center)
+            }
+        } else if let first = presets.first {
+            dsp.applyPreset(first)
         }
     }
     
