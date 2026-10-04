@@ -1087,8 +1087,8 @@ public class RealAudioEngine: ObservableObject {
         stopRouting(restoreDefaultDevice: false)
         
         let captureID = AudioDeviceManager.shared.virtualCaptureDeviceID
-            ?? findInputDevice(nameSubstring: "BlackHole")
             ?? findInputDevice(nameSubstring: "Background Music")
+            ?? findInputDevice(nameSubstring: "BlackHole")
         guard let virtualID = captureID else {
             statusMessage = "Virtual audio driver not found"
             hasBlackHole = false
@@ -1334,13 +1334,13 @@ public class RealAudioEngine: ObservableObject {
         // Restore default system output device to physical speakers ONLY when requested (never on internal routing transitions)
         if restoreDefaultDevice {
             let mgr = AudioDeviceManager.shared
-            if let realDev = mgr.selectedDeviceIDs.first(where: { !self.getDeviceName(deviceID: $0).contains("BlackHole") }) {
+            if let realDev = mgr.selectedDeviceIDs.first(where: { !self.getDeviceName(deviceID: $0).contains("BlackHole") && !self.getDeviceName(deviceID: $0).contains("Background Music") }) {
                 setSystemDefaultOutputDevice(deviceID: realDev)
             } else if let internalSpk = findOutputDevice(nameSubstring: "MacBook") ?? findOutputDevice(nameSubstring: "Динамики") ?? findOutputDevice(nameSubstring: "Built-in") {
                 setSystemDefaultOutputDevice(deviceID: internalSpk)
             } else if let rockbox = findOutputDevice(nameSubstring: "Rockbox") {
                 setSystemDefaultOutputDevice(deviceID: rockbox)
-            } else if let dev = mgr.outputDevices.first(where: { !$0.name.contains("BlackHole") }) {
+            } else if let dev = mgr.outputDevices.first(where: { !$0.name.contains("BlackHole") && !$0.name.contains("Background Music") }) {
                 setSystemDefaultOutputDevice(deviceID: dev.id)
             }
         }
@@ -1465,7 +1465,9 @@ public class RealAudioEngine: ObservableObject {
             var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
             let st = AudioObjectGetPropertyData(id, &nameAddress, 0, nil, &size, &cfName)
             if st == noErr, let name = cfName?.takeRetainedValue() as String? {
-                if name.lowercased().contains(nameSubstring.lowercased()) && hasOutputStreams(deviceID: id) {
+                let lower = name.lowercased()
+                if lower.contains("ui sounds") { continue }
+                if lower.contains(nameSubstring.lowercased()) && hasOutputStreams(deviceID: id) {
                     return id
                 }
             }
@@ -1497,7 +1499,9 @@ public class RealAudioEngine: ObservableObject {
             var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
             let st = AudioObjectGetPropertyData(id, &nameAddress, 0, nil, &size, &cfName)
             if st == noErr, let name = cfName?.takeRetainedValue() as String? {
-                if name.lowercased().contains(nameSubstring.lowercased()) {
+                let lower = name.lowercased()
+                if lower.contains("ui sounds") { continue }
+                if lower.contains(nameSubstring.lowercased()) {
                     return id
                 }
             }

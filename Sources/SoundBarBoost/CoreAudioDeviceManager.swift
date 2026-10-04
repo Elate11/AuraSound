@@ -285,8 +285,8 @@ public class AudioDeviceManager: ObservableObject {
     }
     
     public var virtualCaptureDeviceID: AudioObjectID? {
-        return RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole")
-            ?? RealAudioEngine.shared.findInputDevice(nameSubstring: "Background Music")
+        return RealAudioEngine.shared.findInputDevice(nameSubstring: "Background Music")
+            ?? RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole")
     }
     
     private var registeredVolumeListenerDeviceIDs: Set<AudioObjectID> = []

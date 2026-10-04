@@ -131,6 +131,16 @@ public class AppVolumeManager: ObservableObject {
         }
         
         self.apps = targets
+        
+        // Ensure active apps reflect any saved custom volume in the HAL driver
+        queue.async { [weak self] in
+            guard let self = self else { return }
+            for target in targets {
+                if target.isMuted || target.volume < 0.99 {
+                    self.applyVolumeViaDriver(target: target, volume: target.isMuted ? 0.0 : target.volume, isMute: target.isMuted)
+                }
+            }
+        }
     }
     
     private func isPriority(_ app: AppAudioTarget) -> Bool {
@@ -308,6 +318,23 @@ public class AppVolumeManager: ObservableObject {
         return []
     }
     
+    private func getPIDsMatching(_ pattern: String) -> [pid_t] {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
+        task.arguments = ["-f", pattern]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        do {
+            try task.run()
+            task.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let str = String(data: data, encoding: .utf8) {
+                return str.split(separator: "\n").compactMap { pid_t($0.trimmingCharacters(in: .whitespaces)) }
+            }
+        } catch {}
+        return []
+    }
+    
     public func applyVolumeViaDriver(target: AppAudioTarget, volume: Float, isMute: Bool) {
         guard let devID = findDriverDeviceID() else { return }
         
@@ -315,54 +342,68 @@ public class AppVolumeManager: ObservableObject {
         // In the HAL driver, relative volume is calculated as:
         // theRelativeVolume = pow(rvol / 100.0, 2) * 4.0
         // - rvol = 50 corresponds to 1.0x (100% volume / unity gain / 0 dB)
-        // - rvol = 100 corresponds to 4.0x (+12 dB boost, which heavily clips normal audio)
+        // - rvol = 0 corresponds to 0.0x (Mute)
         // By setting rvol = 50 * sqrt(volClamped), theRelativeVolume = volClamped.
         // This provides clean, distortion-free 0%..100% linear amplitude scaling across the entire slider!
         let rvol: Int32 = isMute ? 0 : Int32(round(50.0 * sqrt(volClamped)))
         
-        var list: [NSDictionary] = [
-            [
-                "pid" as NSString: NSNumber(value: target.pid),
-                "rvol" as NSString: NSNumber(value: rvol)
-            ],
-            [
-                "bid" as NSString: target.bundleId as NSString,
-                "rvol" as NSString: NSNumber(value: rvol)
-            ]
-        ]
+        var list: [[String: Any]] = []
         
-        // Also register all child helper PIDs (e.g. Electron / Chromium audio services)
+        // 1. Direct target app PID and Bundle ID
+        list.append([
+            "pid": target.pid,
+            "bid": target.bundleId,
+            "rvol": rvol
+        ])
+        
+        // 2. Immediate child processes
         let childPIDs = getChildPIDs(parentPID: target.pid)
         for cPid in childPIDs {
             list.append([
-                "pid" as NSString: NSNumber(value: cPid),
-                "rvol" as NSString: NSNumber(value: rvol)
+                "pid": cPid,
+                "bid": target.bundleId,
+                "rvol": rvol
             ])
         }
         
-        if target.bundleId.contains("yandex") || target.name.lowercased().contains("яндекс") {
-            list.append([
-                "bid" as NSString: "ru.yandex.desktop.music.helper" as NSString,
-                "rvol" as NSString: NSNumber(value: rvol)
-            ])
-            list.append([
-                "bid" as NSString: "ru.yandex.desktop.music" as NSString,
-                "rvol" as NSString: NSNumber(value: rvol)
-            ])
-        } else if target.bundleId.contains("safari") {
-            list.append([
-                "bid" as NSString: "com.apple.WebKit.GPU" as NSString,
-                "rvol" as NSString: NSNumber(value: rvol)
-            ])
-            list.append([
-                "bid" as NSString: "com.apple.WebKit.WebContent" as NSString,
-                "rvol" as NSString: NSNumber(value: rvol)
-            ])
-        } else if target.bundleId.contains("chrome") {
-            list.append([
-                "bid" as NSString: "com.google.Chrome.helper" as NSString,
-                "rvol" as NSString: NSNumber(value: rvol)
-            ])
+        // 3. Specialized browser and media app helper processes
+        let bundle = target.bundleId.lowercased()
+        let name = target.name.lowercased()
+        
+        if bundle.contains("safari") {
+            list.append(["bid": "com.apple.WebKit.GPU", "rvol": rvol])
+            list.append(["bid": "com.apple.WebKit.WebContent", "rvol": rvol])
+            list.append(["bid": "com.apple.Safari", "rvol": rvol])
+            for p in getPIDsMatching("WebKit.GPU") {
+                list.append(["pid": p, "bid": "com.apple.WebKit.GPU", "rvol": rvol])
+            }
+            for p in getPIDsMatching("WebKit.WebContent") {
+                list.append(["pid": p, "bid": "com.apple.WebKit.WebContent", "rvol": rvol])
+            }
+        } else if bundle.contains("chrome") || bundle.contains("arc") || bundle.contains("brave") || bundle.contains("edge") {
+            list.append(["bid": "\(target.bundleId).helper", "rvol": rvol])
+            list.append(["bid": "com.google.Chrome.helper", "rvol": rvol])
+            for p in getPIDsMatching("audio.mojom.AudioService") {
+                list.append(["pid": p, "bid": "com.google.Chrome.helper", "rvol": rvol])
+            }
+        } else if bundle.contains("yandex") || name.contains("яндекс") {
+            list.append(["bid": "ru.yandex.desktop.music.helper", "rvol": rvol])
+            list.append(["bid": "ru.yandex.desktop.music", "rvol": rvol])
+            for p in getPIDsMatching("Яндекс Музыка Helper") {
+                list.append(["pid": p, "bid": "ru.yandex.desktop.music.helper", "rvol": rvol])
+            }
+            for p in getPIDsMatching("audio.mojom.AudioService") {
+                list.append(["pid": p, "bid": "ru.yandex.desktop.music.helper", "rvol": rvol])
+            }
+        } else if bundle.contains("telegram") {
+            list.append(["bid": "com.tdesktop.Telegram", "rvol": rvol])
+            list.append(["bid": "ru.keepcoder.Telegram", "rvol": rvol])
+        } else if bundle.contains("spotify") {
+            list.append(["bid": "com.spotify.client", "rvol": rvol])
+            list.append(["bid": "com.spotify.client.helper", "rvol": rvol])
+            for p in getPIDsMatching("Spotify Helper") {
+                list.append(["pid": p, "bid": "com.spotify.client.helper", "rvol": rvol])
+            }
         }
         
         var appVolumesAddr = AudioObjectPropertyAddress(
