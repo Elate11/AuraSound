@@ -1093,6 +1093,7 @@ public class RealAudioEngine: ObservableObject {
         let hasBluetooth = validIDs.contains { isBluetoothDevice(deviceID: $0) }
         let syncDelayMs = AudioDSPManager.shared.isSyncCompensationEnabled ? AudioDSPManager.shared.syncDelayMs : 0.0
         let devMgr = AudioDeviceManager.shared
+        devMgr.ensureBlackHoleUnmuted()
         
         let dists = validIDs.map { devMgr.getSpatialPosition(for: $0).distance }
         let maxDist = dists.max() ?? 1.0

@@ -88,7 +88,7 @@ public class AudioDeviceManager: ObservableObject {
     @Published public var selectedDeviceIDs: Set<AudioObjectID> = []
     @Published public var masterVolume: Float = 0.85
     @Published public var deviceVolumes: [AudioObjectID: Float] = [:]
-    public var deviceRatios: [AudioObjectID: Float] = [:]
+    public var deviceBaseLevels: [AudioObjectID: Float] = [:]
     
     // Physical Output Device Spatial Positions on Minimap
     @Published public var devicePositions: [AudioObjectID: (angle: Double, distance: Double)] = [:]
@@ -205,6 +205,7 @@ public class AudioDeviceManager: ObservableObject {
             self.autoEstimateSyncDelay()
             self.setupVolumeSyncListeners()
             
+            self.ensureBlackHoleUnmuted()
             for id in self.selectedDeviceIDs {
                 self.ensureHardwareDeviceActive(deviceID: id)
             }
@@ -269,6 +270,7 @@ public class AudioDeviceManager: ObservableObject {
             }
         }
         
+        ensureBlackHoleUnmuted()
         setupBlackHoleVolumeListener()
     }
     
@@ -331,11 +333,10 @@ public class AudioDeviceManager: ObservableObject {
         if let v = deviceVolumes[id] {
             return v
         }
-        let sysVol = getDeviceVolume(deviceID: id)
-        let fallback = sysVol > 0 ? sysVol : masterVolume
+        let fallback = masterVolume
         deviceVolumes[id] = fallback
-        if deviceRatios[id] == nil {
-            deviceRatios[id] = masterVolume > 0.01 ? (fallback / masterVolume) : 1.0
+        if deviceBaseLevels[id] == nil {
+            deviceBaseLevels[id] = 1.0
         }
         return fallback
     }
@@ -343,13 +344,12 @@ public class AudioDeviceManager: ObservableObject {
     public func setVolumeForDevice(_ id: AudioObjectID, volume: Float) {
         let clamped = max(0.0, min(1.0, volume))
         deviceVolumes[id] = clamped
-        deviceRatios[id] = masterVolume > 0.01 ? (clamped / masterVolume) : clamped
-        setDeviceVolume(deviceID: id, volume: clamped)
+        deviceBaseLevels[id] = masterVolume > 0.05 ? max(0.0, min(1.0, clamped / masterVolume)) : clamped
+        ensureHardwareDeviceActive(deviceID: id)
         RealAudioEngine.shared.setSinkVolume(deviceID: id, volume: clamped)
     }
     
     public func setVolume(_ volume: Float, syncToBlackHole: Bool = true) {
-        let oldMaster = masterVolume
         let clamped = max(0.0, min(1.0, volume))
         masterVolume = clamped
         if isMuted && clamped > 0.0 {
@@ -364,18 +364,17 @@ public class AudioDeviceManager: ObservableObject {
         allDevIDs.formUnion(selectedDeviceIDs)
         
         for devID in allDevIDs {
-            let cur = deviceVolumes[devID] ?? getDeviceVolume(deviceID: devID)
-            let ratio = deviceRatios[devID] ?? (oldMaster > 0.01 ? (cur / oldMaster) : 1.0)
-            deviceRatios[devID] = ratio
-            let newDevVol = max(0.0, min(1.0, ratio * clamped))
+            let base = deviceBaseLevels[devID] ?? 1.0
+            let newDevVol = max(0.0, min(1.0, base * clamped))
             deviceVolumes[devID] = newDevVol
-            setDeviceVolume(deviceID: devID, volume: newDevVol)
+            ensureHardwareDeviceActive(deviceID: devID)
             RealAudioEngine.shared.setSinkVolume(deviceID: devID, volume: newDevVol)
         }
         
         // Update BlackHole 2ch so system menu bar / OSD matches masterVolume
         if syncToBlackHole, let bhID = RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole") {
             setDeviceVolume(deviceID: bhID, volume: clamped)
+            ensureBlackHoleUnmuted()
         }
     }
     
@@ -461,6 +460,22 @@ public class AudioDeviceManager: ObservableObject {
         return (panL: max(0.2, min(1.0, panL)), panR: max(0.2, min(1.0, panR)))
     }
     
+    public func ensureBlackHoleUnmuted() {
+        if let bhID = RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole") {
+            var zero: UInt32 = 0
+            for channel: UInt32 in [kAudioObjectPropertyElementMain, 0, 1, 2] {
+                var addr = AudioObjectPropertyAddress(
+                    mSelector: kAudioDevicePropertyMute,
+                    mScope: kAudioDevicePropertyScopeOutput,
+                    mElement: channel
+                )
+                if AudioObjectHasProperty(bhID, &addr) {
+                    AudioObjectSetPropertyData(bhID, &addr, 0, nil, UInt32(MemoryLayout<UInt32>.size), &zero)
+                }
+            }
+        }
+    }
+    
     public func ensureHardwareDeviceActive(deviceID: AudioObjectID) {
         var zero: UInt32 = 0
         for channel: UInt32 in [kAudioObjectPropertyElementMain, 0, 1, 2] {
@@ -475,8 +490,8 @@ public class AudioDeviceManager: ObservableObject {
         }
         
         let vol = getDeviceVolume(deviceID: deviceID)
-        if vol <= 0.05 {
-            setDeviceVolume(deviceID: deviceID, volume: 0.85)
+        if vol < 0.90 {
+            setDeviceVolume(deviceID: deviceID, volume: 1.0)
         }
     }
     
@@ -497,20 +512,7 @@ public class AudioDeviceManager: ObservableObject {
     
     public func setMute(_ mute: Bool) {
         isMuted = mute
-        let muteVal: UInt32 = mute ? 1 : 0
-        if let bhID = RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole") {
-            for channel: UInt32 in [kAudioObjectPropertyElementMain, 0, 1, 2] {
-                var addr = AudioObjectPropertyAddress(
-                    mSelector: kAudioDevicePropertyMute,
-                    mScope: kAudioDevicePropertyScopeOutput,
-                    mElement: channel
-                )
-                if AudioObjectHasProperty(bhID, &addr) {
-                    var m = muteVal
-                    AudioObjectSetPropertyData(bhID, &addr, 0, nil, UInt32(MemoryLayout<UInt32>.size), &m)
-                }
-            }
-        }
+        ensureBlackHoleUnmuted()
         
         // Physical devices are unmuted at hardware level so RealAudioEngine DSP controls volume directly
         for devID in selectedDeviceIDs {

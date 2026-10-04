@@ -55,16 +55,53 @@ public class AppVolumeManager: ObservableObject {
         let myPid = ProcessInfo.processInfo.processIdentifier
         
         var targets: [AppAudioTarget] = []
+        var seenBundleIDs = Set<String>()
+        var seenNames = Set<String>()
         
         for app in running {
             guard app.processIdentifier != myPid else { continue }
             
-            // Only regular apps with UI or known background audio players
-            guard app.activationPolicy == .regular || isKnownAudioApp(app) else { continue }
+            // STRICTLY only regular apps with a user interface window
+            guard app.activationPolicy == .regular else { continue }
             
-            let name = app.localizedName ?? "Application"
-            let bundleId = app.bundleIdentifier ?? name
-            let id = bundleId.lowercased()
+            let rawName = app.localizedName ?? "Application"
+            let rawBundleId = app.bundleIdentifier ?? rawName
+            let lowerBundle = rawBundleId.lowercased()
+            let lowerName = rawName.lowercased()
+            
+            // Explicitly ignore WebKit / Safari sub-processes, sandboxes, daemons, helpers, XPC services
+            if lowerBundle.contains("webkit") ||
+               lowerBundle.contains("helper") ||
+               lowerBundle.contains("service") ||
+               lowerBundle.contains("xpc") ||
+               lowerBundle.contains("sandbox") ||
+               lowerBundle.contains("broker") ||
+               lowerName.contains("веб-контент") ||
+               lowerName.contains("web content") ||
+               lowerName.contains("networking") ||
+               lowerName.contains("media") {
+                continue
+            }
+            
+            // Normalize Safari so there is strictly one single Safari entry
+            let finalName: String
+            let finalBundleId: String
+            if lowerBundle == "com.apple.safari" || (lowerBundle.hasPrefix("com.apple.safari") && !lowerBundle.contains("webapp")) {
+                finalName = "Safari"
+                finalBundleId = "com.apple.Safari"
+            } else {
+                finalName = rawName
+                finalBundleId = rawBundleId
+            }
+            
+            let id = finalBundleId.lowercased()
+            
+            // Deduplicate: each application appears at most once
+            if seenBundleIDs.contains(id) || seenNames.contains(finalName.lowercased()) {
+                continue
+            }
+            seenBundleIDs.insert(id)
+            seenNames.insert(finalName.lowercased())
             
             let savedVol = savedVolumes[id] ?? 1.0
             let savedMute = savedMutes[id] ?? false
@@ -72,8 +109,8 @@ public class AppVolumeManager: ObservableObject {
             let target = AppAudioTarget(
                 id: id,
                 pid: app.processIdentifier,
-                name: name,
-                bundleId: bundleId,
+                name: finalName,
+                bundleId: finalBundleId,
                 icon: app.icon,
                 volume: savedVol,
                 isMuted: savedMute
@@ -96,11 +133,6 @@ public class AppVolumeManager: ObservableObject {
     
     private func isPriority(_ app: AppAudioTarget) -> Bool {
         let lower = (app.name + " " + app.bundleId).lowercased()
-        return priorityKeywords.contains { lower.contains($0) }
-    }
-    
-    private func isKnownAudioApp(_ app: NSRunningApplication) -> Bool {
-        let lower = ((app.localizedName ?? "") + " " + (app.bundleIdentifier ?? "")).lowercased()
         return priorityKeywords.contains { lower.contains($0) }
     }
     
