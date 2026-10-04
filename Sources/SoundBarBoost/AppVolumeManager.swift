@@ -26,10 +26,12 @@ public class AppVolumeManager: ObservableObject {
     
     // Priority apps that commonly play audio
     private let priorityKeywords = [
-        "музыка", "music", "spotify", "safari", "chrome", "arc", "brave", "firefox",
+        "музыка", "music", "spotify", "safari", "chrome", "arc", "brave", "firefox", "opera", "edge",
         "telegram", "discord", "vlc", "iina", "quicktime", "youtube", "podcast",
-        "yandex", "яндекс", "vk", "zoom", "teams", "slack"
+        "yandex", "яндекс", "vk", "zoom", "teams", "slack", "soundcloud", "twitch", "kinopoisk"
     ]
+    
+    private var previousVolumes: [String: Float] = [:]
     
     public init() {
         loadSavedSettings()
@@ -83,6 +85,10 @@ public class AppVolumeManager: ObservableObject {
                 continue
             }
             
+            // Filter to show ONLY real audio-playing applications (browsers, media players, voice apps)
+            let isAudioApp = priorityKeywords.contains { lowerBundle.contains($0) || lowerName.contains($0) }
+            guard isAudioApp else { continue }
+            
             // Normalize Safari so there is strictly one single Safari entry
             let finalName: String
             let finalBundleId: String
@@ -120,12 +126,7 @@ public class AppVolumeManager: ObservableObject {
         
         // Sort priority audio apps first, then alphabetically
         targets.sort { a, b in
-            let aPriority = isPriority(a)
-            let bPriority = isPriority(b)
-            if aPriority != bPriority {
-                return aPriority && !bPriority
-            }
-            return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
         }
         
         self.apps = targets
@@ -139,6 +140,7 @@ public class AppVolumeManager: ObservableObject {
     public func setVolume(for id: String, volume: Float) {
         let clamped = max(0.0, min(1.0, volume))
         if let idx = apps.firstIndex(where: { $0.id == id }) {
+            let oldVol = previousVolumes[id] ?? apps[idx].volume
             apps[idx].volume = clamped
             if clamped > 0.0 && apps[idx].isMuted {
                 apps[idx].isMuted = false
@@ -148,7 +150,8 @@ public class AppVolumeManager: ObservableObject {
             saveSettings()
             
             let target = apps[idx]
-            applyVolumeToApp(target: target, volume: target.isMuted ? 0.0 : clamped)
+            applyVolumeToApp(target: target, volume: target.isMuted ? 0.0 : clamped, oldVolume: oldVol)
+            previousVolumes[id] = clamped
         }
     }
     
@@ -160,11 +163,12 @@ public class AppVolumeManager: ObservableObject {
             saveSettings()
             
             let target = apps[idx]
-            applyVolumeToApp(target: target, volume: isMuted ? 0.0 : target.volume)
+            let oldVol = previousVolumes[id] ?? target.volume
+            applyVolumeToApp(target: target, volume: isMuted ? 0.0 : target.volume, oldVolume: oldVol)
         }
     }
     
-    private func applyVolumeToApp(target: AppAudioTarget, volume: Float) {
+    private func applyVolumeToApp(target: AppAudioTarget, volume: Float, oldVolume: Float) {
         queue.async {
             let bundle = target.bundleId.lowercased()
             let name = target.name
@@ -241,66 +245,59 @@ public class AppVolumeManager: ObservableObject {
                 }
             } else if bundle.contains("chrome") || bundle.contains("arc") || bundle.contains("brave") || bundle.contains("edge") {
                 let appName = name
-                if isMute {
-                    let script = """
-                    tell application "\(appName)"
-                        repeat with w in windows
-                            repeat with t in tabs of w
-                                try
-                                    execute t javascript "document.querySelectorAll('audio, video').forEach(el => { el.muted = true; el.volume = 0; });"
-                                end try
-                            end repeat
+                let script = """
+                tell application "\(appName)"
+                    repeat with w in windows
+                        repeat with t in tabs of w
+                            try
+                                execute t javascript "document.querySelectorAll('audio, video').forEach(el => { el.muted = \(isMute); el.volume = \(volume); });"
+                            end try
                         end repeat
+                    end repeat
+                end tell
+                tell application "System Events"
+                    tell process "\(appName)"
+                        try
+                            click menu item "\(isMute ? "Mute Tab" : "Unmute Tab")" of menu "Window" of menu bar 1
+                        end try
+                        try
+                            click menu item "\(isMute ? "Заглушить вкладку" : "Включить звук")" of menu "Окно" of menu bar 1
+                        end try
                     end tell
-                    tell application "System Events"
-                        tell process "\(appName)"
-                            try
-                                click menu item "Mute Tab" of menu "Window" of menu bar 1
-                            end try
-                            try
-                                click menu item "Заглушить вкладку" of menu "Окно" of menu bar 1
-                            end try
-                        end tell
-                    end tell
-                    """
-                    self.runAppleScript(script)
+                end tell
+                """
+                self.runAppleScript(script)
+            } else if bundle.contains("yandex") || name.lowercased().contains("яндекс") {
+                if isMute {
+                    self.postKey(pid: target.pid, keyCode: 49) // Spacebar toggle play/pause
                 } else {
-                    let script = """
-                    tell application "\(appName)"
-                        repeat with w in windows
-                            repeat with t in tabs of w
-                                try
-                                    execute t javascript "document.querySelectorAll('audio, video').forEach(el => { el.muted = false; el.volume = \(volume); });"
-                                end try
-                            end repeat
-                        end repeat
-                    end tell
-                    tell application "System Events"
-                        tell process "\(appName)"
-                            try
-                                click menu item "Unmute Tab" of menu "Window" of menu bar 1
-                            end try
-                            try
-                                click menu item "Включить звук" of menu "Окно" of menu bar 1
-                            end try
-                        end tell
-                    end tell
-                    """
-                    self.runAppleScript(script)
+                    let delta = volume - oldVolume
+                    if abs(delta) >= 0.03 {
+                        let steps = min(10, max(1, Int(round(abs(delta) / 0.04))))
+                        let keyCode: CGKeyCode = delta > 0 ? 126 : 125 // Cmd+Up / Cmd+Down
+                        for _ in 0..<steps {
+                            self.postKey(pid: target.pid, keyCode: keyCode, flags: .maskCommand)
+                            usleep(25000)
+                        }
+                    }
                 }
-            } else if bundle.contains("yandex") || bundle.contains("music") || bundle.contains("soundcloud") || bundle.contains("telegram") || bundle.contains("discord") {
-                // Media play/pause key toggle for Electron and desktop audio players
+            } else if bundle.contains("soundcloud") || bundle.contains("telegram") || bundle.contains("discord") {
                 if isMute {
-                    let script = """
-                    tell application "System Events"
-                        tell process "\(name)"
-                            key code 49
-                        end tell
-                    end tell
-                    """
-                    self.runAppleScript(script)
+                    self.postKey(pid: target.pid, keyCode: 49) // Spacebar toggle play/pause
                 }
             }
+        }
+    }
+    
+    private func postKey(pid: pid_t, keyCode: CGKeyCode, flags: CGEventFlags = []) {
+        if let eventDown = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true) {
+            eventDown.flags = flags
+            eventDown.postToPid(pid)
+        }
+        usleep(15000)
+        if let eventUp = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false) {
+            eventUp.flags = flags
+            eventUp.postToPid(pid)
         }
     }
     

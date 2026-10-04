@@ -4,7 +4,7 @@ set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd "$DIR"
 
-echo "🔨 Building AuraSound Max (Release)..."
+echo "Building AuraSound Max (Release)..."
 swift build -c release
 
 APP_NAME="AuraSound Max"
@@ -13,7 +13,7 @@ CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
 
-echo "📦 Creating macOS App Bundle..."
+echo "Creating macOS App Bundle..."
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR"
 mkdir -p "$RESOURCES_DIR"
@@ -52,4 +52,9 @@ cat << 'EOF' > "$CONTENTS_DIR/Info.plist"
 EOF
 
 chmod +x "$MACOS_DIR/$APP_NAME"
-echo "✅ Successfully built: $APP_DIR"
+echo "Successfully built: $APP_DIR"
+
+echo "Installing to /Applications/${APP_NAME}.app..."
+rm -rf "/Applications/${APP_NAME}.app"
+cp -R "$APP_DIR" "/Applications/${APP_NAME}.app"
+echo "Installed to /Applications/${APP_NAME}.app"
