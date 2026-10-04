@@ -1211,10 +1211,10 @@ public class RealAudioEngine: ObservableObject {
                 }
                 
                 let devMgr = AudioDeviceManager.shared
-                let master = devMgr.isMuted ? 0.0 : devMgr.masterVolume
+                let isMuted = devMgr.isMuted
                 let (panL, panR) = devMgr.getSpatialPan(for: sink.deviceID)
-                let volL = sink.volumeGain * master * panL
-                let volR = sink.volumeGain * master * panR
+                let volL = (isMuted ? 0.0 : sink.volumeGain) * panL
+                let volR = (isMuted ? 0.0 : sink.volumeGain) * panR
                 
                 if numChans >= 2 {
                     for i in 0..<frameCount {

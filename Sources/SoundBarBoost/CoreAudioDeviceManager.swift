@@ -88,6 +88,7 @@ public class AudioDeviceManager: ObservableObject {
     @Published public var selectedDeviceIDs: Set<AudioObjectID> = []
     @Published public var masterVolume: Float = 0.85
     @Published public var deviceVolumes: [AudioObjectID: Float] = [:]
+    public var deviceRatios: [AudioObjectID: Float] = [:]
     
     // Physical Output Device Spatial Positions on Minimap
     @Published public var devicePositions: [AudioObjectID: (angle: Double, distance: Double)] = [:]
@@ -333,17 +334,22 @@ public class AudioDeviceManager: ObservableObject {
         let sysVol = getDeviceVolume(deviceID: id)
         let fallback = sysVol > 0 ? sysVol : masterVolume
         deviceVolumes[id] = fallback
+        if deviceRatios[id] == nil {
+            deviceRatios[id] = masterVolume > 0.01 ? (fallback / masterVolume) : 1.0
+        }
         return fallback
     }
     
     public func setVolumeForDevice(_ id: AudioObjectID, volume: Float) {
         let clamped = max(0.0, min(1.0, volume))
         deviceVolumes[id] = clamped
+        deviceRatios[id] = masterVolume > 0.01 ? (clamped / masterVolume) : clamped
         setDeviceVolume(deviceID: id, volume: clamped)
         RealAudioEngine.shared.setSinkVolume(deviceID: id, volume: clamped)
     }
     
     public func setVolume(_ volume: Float, syncToBlackHole: Bool = true) {
+        let oldMaster = masterVolume
         let clamped = max(0.0, min(1.0, volume))
         masterVolume = clamped
         if isMuted && clamped > 0.0 {
@@ -351,6 +357,21 @@ public class AudioDeviceManager: ObservableObject {
         }
         isUpdatingVolumeInternally = true
         defer { isUpdatingVolumeInternally = false }
+        
+        // When master slider changes (especially decreases), also scale all individual device sliders proportionally
+        var allDevIDs = Set(outputDevices.map { $0.id })
+        allDevIDs.formUnion(deviceVolumes.keys)
+        allDevIDs.formUnion(selectedDeviceIDs)
+        
+        for devID in allDevIDs {
+            let cur = deviceVolumes[devID] ?? getDeviceVolume(deviceID: devID)
+            let ratio = deviceRatios[devID] ?? (oldMaster > 0.01 ? (cur / oldMaster) : 1.0)
+            deviceRatios[devID] = ratio
+            let newDevVol = max(0.0, min(1.0, ratio * clamped))
+            deviceVolumes[devID] = newDevVol
+            setDeviceVolume(deviceID: devID, volume: newDevVol)
+            RealAudioEngine.shared.setSinkVolume(deviceID: devID, volume: newDevVol)
+        }
         
         // Update BlackHole 2ch so system menu bar / OSD matches masterVolume
         if syncToBlackHole, let bhID = RealAudioEngine.shared.findInputDevice(nameSubstring: "BlackHole") {
