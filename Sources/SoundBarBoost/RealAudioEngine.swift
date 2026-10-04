@@ -552,13 +552,20 @@ public final class MultiSinkAudioDSP {
                 
                 // MULTIBAND FREQUENCY SPLIT:
                 // Lows (<180Hz) are kept strictly mono in the center anchor to prevent phase cancellation & distortion.
-                let sideLow = sink.crossoverLowL.process(sample: side)
-                let sideNoBass = side - sideLow
-                let sideHigh = sink.crossoverHighL.process(sample: sideNoBass)
-                let sideMid = sideNoBass - sideHigh
+                let midBass = sink.crossoverLowL.process(sample: mid)
+                let midAir = mid - midBass
                 
-                // --- A. SCHROEDER ALL-PASS 3D PHASE DECORRELATOR (Flat unity gain |H(w)| == 1.0, 0dB resonance) ---
-                let apIn = mid * 0.35
+                // Eliminate bass from side channel: guarantee zero out-of-phase low-frequency cancellation
+                let sideBass = sink.crossoverLowR.process(sample: side)
+                let sideAir = side - sideBass
+                
+                let sideHigh = sink.crossoverHighL.process(sample: sideAir)
+                let sideMid = sideAir - sideHigh
+                
+                // --- A. SCHROEDER ALL-PASS 3D PHASE DECORRELATOR ---
+                // Only decorrelate midAir (vocals, acoustic reflections, high-frequency spatial cues)
+                // NEVER pass low frequencies through delay lines!
+                let apIn = midAir * 0.30
                 let apIndex = sink.apHead0 % 225
                 let vDelayed = sink.apL0[apIndex]
                 let g: Float = 0.55
@@ -577,32 +584,32 @@ public final class MultiSinkAudioDSP {
                 let intensity = min(2.0, max(0.5, Float(dspMgr.spatialIntensity3D) * 0.70))
                 
                 // Spatialized high-frequency binaural cues with crosstalk cancellation
-                let spatialHigh = (sideHigh * width * 1.15) - (delayedSideHigh * 0.30 * intensity)
+                let spatialHigh = (sideHigh * width * 1.10) - (delayedSideHigh * 0.25 * intensity)
                 
                 // Expansive focused stereo width for mids
-                let spatialMid = sideMid * min(1.6, width * 0.95)
+                let spatialMid = sideMid * min(1.5, width * 0.90)
                 
-                // Total spatial side signal: clean stereo width + pristine 3D phase decorrelation
-                let spatialSide = spatialMid + spatialHigh + (decorrelated3D * 0.35 * intensity)
+                // Total spatial side signal: clean stereo width + pristine 3D phase decorrelation (strictly no bass)
+                let spatialSide = spatialMid + spatialHigh + (decorrelated3D * 0.30 * intensity)
                 
                 // --- C. DOLBY ATMOS HEIGHT / PINNA ELEVATION CUES (Overhead 3D Sound) ---
                 var heightL: Float = 0
                 var heightR: Float = 0
                 if atmosElev > 0.05 {
-                    let elevFactor = min(1.0, Float(atmosElev)) * 0.35
-                    let pinnaL = sink.heightFilterL.process(sample: sideHigh + (decorrelated3D * 0.20))
-                    let pinnaR = sink.heightFilterR.process(sample: -sideHigh - (decorrelated3D * 0.20))
+                    let elevFactor = min(1.0, Float(atmosElev)) * 0.30
+                    let pinnaL = sink.heightFilterL.process(sample: sideHigh + (decorrelated3D * 0.15))
+                    let pinnaR = sink.heightFilterR.process(sample: -sideHigh - (decorrelated3D * 0.15))
                     heightL = (pinnaL - sideHigh) * elevFactor
                     heightR = (pinnaR - (-sideHigh)) * elevFactor
                 }
                 
                 // --- D. CINEMA / STUDIO 3D EARLY REFLECTIONS (Acoustic spatial boundary) ---
-                let roomFactor = min(1.0, Float(atmosRoom) * 0.25)
-                sink.surroundDelayL[sink.surroundHead & 4095] = sideNoBass + (decorrelated3D * 0.20)
-                let refl1 = sink.surroundDelayL[(sink.surroundHead - 190) & 4095] * 0.22
-                let refl2 = sink.surroundDelayL[(sink.surroundHead - 390) & 4095] * 0.16
-                let refl3 = sink.surroundDelayL[(sink.surroundHead - 280) & 4095] * -0.20
-                let refl4 = sink.surroundDelayL[(sink.surroundHead - 560) & 4095] * -0.14
+                let roomFactor = min(1.0, Float(atmosRoom) * 0.20)
+                sink.surroundDelayL[sink.surroundHead & 4095] = sideAir + (decorrelated3D * 0.15)
+                let refl1 = sink.surroundDelayL[(sink.surroundHead - 190) & 4095] * 0.20
+                let refl2 = sink.surroundDelayL[(sink.surroundHead - 390) & 4095] * 0.15
+                let refl3 = sink.surroundDelayL[(sink.surroundHead - 280) & 4095] * -0.18
+                let refl4 = sink.surroundDelayL[(sink.surroundHead - 560) & 4095] * -0.12
                 sink.surroundHead += 1
                 
                 let roomL = (refl1 + refl2) * roomFactor
@@ -610,48 +617,55 @@ public final class MultiSinkAudioDSP {
                 
                 // --- E. CINEMA / NEAR-FIELD SUB-BASS IMPACT (Centered, punchy LFE) ---
                 var subLFE: Float = 0
-                if atmosSub > 1.05 {
-                    let subFactor = min(1.0, Float(atmosSub - 1.0)) * 0.40
-                    let filteredSub = sink.subBassL.process(sample: mid)
-                    subLFE = (filteredSub - mid) * subFactor
+                if atmosSub > 1.02 {
+                    let subFactor = min(1.0, Float(atmosSub - 1.0)) * 0.35
+                    let filteredSub = sink.subBassL.process(sample: midBass)
+                    subLFE = filteredSub * subFactor
                 }
                 
-                // --- F. 3D HOLOGRAM SUMMATION WITH CINEMA MATRIXING ---
+                // --- F. 3D HOLOGRAM SUMMATION WITH CLEAN MONO-BASS ANCHOR ---
                 let role = sink.spatialRole
                 let compL: Float
                 let compR: Float
                 
                 // Distance reverberation factor: further speakers carry more room ambiance and surround cues
                 let dist = Float(max(0.5, min(5.0, sink.distanceMeters)))
-                let roomScale = min(1.6, 0.75 + (dist - 0.8) * 0.25)
+                let roomScale = min(1.5, 0.75 + (dist - 0.8) * 0.25)
                 let actualRoomL = roomL * roomScale
                 let actualRoomR = roomR * roomScale
                 
+                // Unified, distortion-free constant-energy matrixing:
+                // Bass is identical on Left and Right (mono anchor), providing maximum acoustic punch with zero cancellation.
+                let totalBass = (midBass * 0.85) + (subLFE * 0.25)
+                
                 if role == .leftChannel {
-                    compL = (mid * 0.65) + (spatialSide * 0.55) + (heightL * 0.18) + (actualRoomL * 0.15) + (subLFE * 0.20)
+                    compL = totalBass + (midAir * 0.65) + (spatialSide * 0.55) + (heightL * 0.15) + (actualRoomL * 0.12)
                     compR = 0.02 * compL
                 } else if role == .rightChannel {
-                    let rSide = (mid * 0.65) - (spatialSide * 0.55) + (heightR * 0.18) + (actualRoomR * 0.15) + (subLFE * 0.20)
+                    let rSide = totalBass + (midAir * 0.65) - (spatialSide * 0.55) + (heightR * 0.15) + (actualRoomR * 0.12)
                     compL = 0.02 * rSide
                     compR = rSide
                 } else if role == .frontCenter {
-                    // Cinema Screen / Center Stage: Crystal-clear dialogue, vocal focus, front punch
-                    compL = (mid * 0.82) + (spatialSide * 0.22) + (subLFE * 0.30) + (actualRoomL * 0.08)
-                    compR = (mid * 0.82) - (spatialSide * 0.22) + (subLFE * 0.30) + (actualRoomR * 0.08)
+                    // Cinema Screen / Center Stage: Clear dialogue & solid center punch
+                    compL = totalBass + (midAir * 0.78) + (spatialSide * 0.20) + (actualRoomL * 0.06)
+                    compR = totalBass + (midAir * 0.78) - (spatialSide * 0.20) + (actualRoomR * 0.06)
                 } else if role == .surroundSatellite {
-                    // Cinema Surround Array: Immersive 3D side wrap, early reflections, height envelope
-                    compL = (mid * 0.30) + (spatialSide * 0.70) + (heightL * 0.35) + (actualRoomL * 0.35) + (subLFE * 0.15)
-                    compR = (mid * 0.30) - (spatialSide * 0.70) + (heightR * 0.35) + (actualRoomR * 0.35) + (subLFE * 0.15)
+                    // Cinema Surround Array: Immersive 3D side wrap
+                    compL = (totalBass * 0.45) + (midAir * 0.30) + (spatialSide * 0.65) + (heightL * 0.25) + (actualRoomL * 0.25)
+                    compR = (totalBass * 0.45) + (midAir * 0.30) - (spatialSide * 0.65) + (heightR * 0.25) + (actualRoomR * 0.25)
                 } else {
-                    // Full 3D Mix
-                    compL = (mid * 0.65) + (spatialSide * 0.45) + (heightL * 0.18) + (actualRoomL * 0.15) + (subLFE * 0.22)
-                    compR = (mid * 0.65) - (spatialSide * 0.45) + (heightR * 0.18) + (actualRoomR * 0.15) + (subLFE * 0.22)
+                    // Full 3D Mix: Balanced, expansive, pristine fidelity
+                    compL = totalBass + (midAir * 0.60) + (spatialSide * 0.40) + (heightL * 0.15) + (actualRoomL * 0.12)
+                    compR = totalBass + (midAir * 0.60) - (spatialSide * 0.40) + (heightR * 0.15) + (actualRoomR * 0.12)
                 }
                 
-                // Automatic Headroom Protection: strictly preserves 0 dBFS ceiling (< 0.95)
-                let maxSpatialPeak = max(abs(compL), abs(compR))
-                if maxSpatialPeak > 0.95 {
-                    let scale = 0.95 / maxSpatialPeak
+                // Organic Soft-Knee Saturation (NO hard-clipping flat tops!)
+                let peak = max(abs(compL), abs(compR))
+                if peak > 0.88 {
+                    let over = peak - 0.88
+                    let compressedOver = tanh(over * 2.2) / 2.2
+                    let smoothPeak = 0.88 + compressedOver * 0.07 // strictly caps at < 0.95
+                    let scale = smoothPeak / peak
                     rawL = compL * scale
                     rawR = compR * scale
                 } else {
@@ -818,14 +832,15 @@ public final class OutputDeviceSink {
     public var apR0: [Float] = [Float](repeating: 0, count: 243)
     public var apHead0: Int = 0
     
+    // Cinema Sub-Bass Filter (Clean Low-Pass below 80 Hz)
     public let subBassL: BiquadFilter = {
         let f = BiquadFilter()
-        f.setLowShelf(frequency: 80.0, sampleRate: 48000.0, gainDb: 4.5)
+        f.setLowPass(frequency: 80.0, sampleRate: 48000.0, q: 0.707)
         return f
     }()
     public let subBassR: BiquadFilter = {
         let f = BiquadFilter()
-        f.setLowShelf(frequency: 80.0, sampleRate: 48000.0, gainDb: 4.5)
+        f.setLowPass(frequency: 80.0, sampleRate: 48000.0, q: 0.707)
         return f
     }()
     public let heightFilterL: BiquadFilter = {
@@ -839,8 +854,13 @@ public final class OutputDeviceSink {
         return f
     }()
     
-    // Multiband Frequency-Splitting Crossover Filters (Small Room & Headphone 3D Mode)
+    // Multiband Frequency-Splitting Crossover Filters (Clean Mono Bass Anchor)
     public let crossoverLowL: BiquadFilter = {
+        let f = BiquadFilter()
+        f.setLowPass(frequency: 180.0, sampleRate: 48000.0, q: 0.707)
+        return f
+    }()
+    public let crossoverLowR: BiquadFilter = {
         let f = BiquadFilter()
         f.setLowPass(frequency: 180.0, sampleRate: 48000.0, q: 0.707)
         return f
