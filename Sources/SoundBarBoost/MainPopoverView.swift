@@ -351,30 +351,10 @@ public struct MainPopoverView: View {
         }
     }
     
-    private var appAvatarImage: NSImage? {
-        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "png"),
-           let img = NSImage(contentsOf: url) {
-            return img
-        }
-        return NSImage(contentsOfFile: "/Users/aleksandr/AuraSound/Assets/AppIcon.png")
-    }
-    
     // MARK: - ASCII Banner & Engine Power Switch
     private var asciiLogoHeader: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                if let avatar = appAvatarImage {
-                    Image(nsImage: avatar)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 28, height: 28)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(TermTheme.green.opacity(0.6), lineWidth: 1)
-                        )
-                }
-                
                 VStack(alignment: .leading, spacing: 1) {
                     Text("█▀█ █ █ █▀▄ █▀█ █▀ █▀█ █ █ █▄ █ █▀▄")
                         .font(.system(size: 9.5, weight: .black, design: .monospaced))
