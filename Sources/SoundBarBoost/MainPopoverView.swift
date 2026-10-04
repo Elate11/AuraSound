@@ -1416,6 +1416,32 @@ public struct MainPopoverView: View {
                         toggle: { dsp.isAntiClip.toggle() }
                     )
                 }
+                
+                if dsp.isBassPunch {
+                    HStack {
+                        Text("BASS PUNCH GAIN: +\(Int(dsp.bassPunchGain)) dB")
+                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                            .foregroundColor(TermTheme.green)
+                        Spacer()
+                        Slider(value: $dsp.bassPunchGain, in: 1.0...12.0, step: 0.5)
+                            .frame(width: 170)
+                            .accentColor(TermTheme.green)
+                    }
+                    .padding(.top, 2)
+                }
+                
+                if dsp.isVocalBoost {
+                    HStack {
+                        Text("VOCAL BOOST GAIN: +\(String(format: "%.1f", dsp.vocalBoostGain)) dB")
+                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                            .foregroundColor(TermTheme.green)
+                        Spacer()
+                        Slider(value: $dsp.vocalBoostGain, in: 1.0...10.0, step: 0.5)
+                            .frame(width: 170)
+                            .accentColor(TermTheme.green)
+                    }
+                    .padding(.top, 2)
+                }
             }
         }
     }
@@ -1451,10 +1477,48 @@ public struct MainPopoverView: View {
         TermCard(title: "06: GRAPHIC EQUALIZER (10-BAND)", badge: dsp.selectedPreset.name.uppercased()) {
             VStack(alignment: .leading, spacing: 6) {
                 eqPresetBar
+                eqPresetIntensityBar
                 eqAsciiMatrix
                 eqBottomControls
             }
         }
+    }
+    
+    private var eqPresetIntensityBar: some View {
+        HStack(spacing: 8) {
+            Text("INTENSITY: \(Int(dsp.presetIntensity * 100))%")
+                .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                .foregroundColor(TermTheme.green)
+                .frame(width: 110, alignment: .leading)
+            
+            Slider(value: $dsp.presetIntensity, in: 0.0...2.0, step: 0.05)
+                .accentColor(TermTheme.green)
+            
+            HStack(spacing: 4) {
+                presetIntensityBtn("50%", val: 0.5)
+                presetIntensityBtn("100%", val: 1.0)
+                presetIntensityBtn("150%", val: 1.5)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color.black.opacity(0.30))
+        .overlay(RoundedRectangle(cornerRadius: 3).stroke(TermTheme.borderSubtle, lineWidth: 1))
+    }
+    
+    private func presetIntensityBtn(_ title: String, val: Double) -> some View {
+        Button(action: {
+            dsp.presetIntensity = val
+        }) {
+            Text(title)
+                .font(.system(size: 8.5, weight: .bold, design: .monospaced))
+                .foregroundColor(abs(dsp.presetIntensity - val) < 0.02 ? TermTheme.greenBright : TermTheme.dimText)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 3)
+                .background(abs(dsp.presetIntensity - val) < 0.02 ? TermTheme.buttonActiveBg : TermTheme.buttonBg)
+                .overlay(RoundedRectangle(cornerRadius: 2).stroke(abs(dsp.presetIntensity - val) < 0.02 ? TermTheme.green : TermTheme.borderSubtle, lineWidth: 0.8))
+        }
+        .buttonStyle(PlainButtonStyle())
     }
     
     private var eqPresetBar: some View {

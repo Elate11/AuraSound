@@ -152,8 +152,25 @@ public class AudioDSPManager: ObservableObject {
     
     @Published public var isAntiClippingEnabled: Bool = true
     @Published public var isSpatialEnhancerEnabled: Bool = false
-    @Published public var isBassPunchEnabled: Bool = false
-    @Published public var isVocalBoostEnabled: Bool = false
+    @Published public var isBassPunchEnabled: Bool = false {
+        didSet { saveState() }
+    }
+    @Published public var bassPunchGain: Double = 4.0 {
+        didSet { saveState() }
+    }
+    @Published public var isVocalBoostEnabled: Bool = false {
+        didSet { saveState() }
+    }
+    @Published public var vocalBoostGain: Double = 3.5 {
+        didSet { saveState() }
+    }
+    @Published public var presetIntensity: Double = 1.0 {
+        didSet {
+            applyPresetWithIntensity()
+            saveState()
+        }
+    }
+    public var basePresetGains: [Double] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     
     // MARK: - Dolby Atmos 3D Spatial Audio
     @Published public var isAtmosEnabled: Bool = false {
@@ -334,8 +351,14 @@ public class AudioDSPManager: ObservableObject {
             )
         }
         self.bands = initialBands
+        self.basePresetGains = initialBands.map { $0.gain }
         
         loadState()
+        if selectedPreset.name != "Flat" && selectedPreset.gains.count == 10 {
+            self.basePresetGains = selectedPreset.gains
+        } else {
+            self.basePresetGains = bands.map { $0.gain }
+        }
         startVisualizerSimulation()
         
         RealAudioEngine.shared.updateBands(gains: bands.map { $0.gain })
@@ -358,23 +381,41 @@ public class AudioDSPManager: ObservableObject {
         selectedPreset = preset
         self.isEQEnabled = true
         RealAudioEngine.shared.setEQBypass(false)
+        basePresetGains = preset.gains
         for i in 0..<min(bands.count, preset.gains.count) {
-            bands[i].gain = preset.gains[i]
+            bands[i].gain = max(-24.0, min(24.0, preset.gains[i] * presetIntensity))
         }
         RealAudioEngine.shared.updateBands(gains: bands.map { $0.gain })
         saveState()
     }
     
+    public func applyPresetWithIntensity() {
+        guard selectedPreset.name != "Flat" else {
+            for i in 0..<bands.count {
+                bands[i].gain = 0.0
+            }
+            RealAudioEngine.shared.updateBands(gains: bands.map { $0.gain })
+            return
+        }
+        for i in 0..<min(bands.count, basePresetGains.count) {
+            bands[i].gain = max(-24.0, min(24.0, basePresetGains[i] * presetIntensity))
+        }
+        RealAudioEngine.shared.updateBands(gains: bands.map { $0.gain })
+    }
+    
     public func updateBand(index: Int, gain: Double) {
         guard index >= 0 && index < bands.count else { return }
         bands[index].gain = max(-24.0, min(24.0, gain))
+        if index < basePresetGains.count {
+            basePresetGains[index] = presetIntensity > 0.05 ? (gain / presetIntensity) : gain
+        }
         self.isEQEnabled = true
         RealAudioEngine.shared.setEQBypass(false)
         RealAudioEngine.shared.updateBands(gains: bands.map { $0.gain })
         
         if selectedPreset.name != "Custom" {
             let isMatching = bands.enumerated().allSatisfy { (idx, band) in
-                idx < selectedPreset.gains.count && abs(band.gain - selectedPreset.gains[idx]) < 0.1
+                idx < selectedPreset.gains.count && abs(band.gain - (selectedPreset.gains[idx] * presetIntensity)) < 0.1
             }
             if !isMatching {
                 selectedPreset = EQPreset(
@@ -441,7 +482,10 @@ public class AudioDSPManager: ObservableObject {
         UserDefaults.standard.set(isAntiClippingEnabled, forKey: "Aura_IsAntiClip")
         UserDefaults.standard.set(isSpatialEnhancerEnabled, forKey: "Aura_IsSpatial")
         UserDefaults.standard.set(isBassPunchEnabled, forKey: "Aura_IsBassPunch")
+        UserDefaults.standard.set(bassPunchGain, forKey: "Aura_BassPunchGain")
         UserDefaults.standard.set(isVocalBoostEnabled, forKey: "Aura_IsVocalBoost")
+        UserDefaults.standard.set(vocalBoostGain, forKey: "Aura_VocalBoostGain")
+        UserDefaults.standard.set(presetIntensity, forKey: "Aura_PresetIntensity")
         UserDefaults.standard.set(isAtmosEnabled, forKey: "Aura_IsAtmos")
         UserDefaults.standard.set(atmosMode, forKey: "Aura_AtmosMode")
         UserDefaults.standard.set(atmosRoomSize, forKey: "Aura_AtmosRoomSize")
@@ -477,7 +521,16 @@ public class AudioDSPManager: ObservableObject {
         self.isAntiClippingEnabled = UserDefaults.standard.bool(forKey: "Aura_IsAntiClip")
         self.isSpatialEnhancerEnabled = UserDefaults.standard.bool(forKey: "Aura_IsSpatial")
         self.isBassPunchEnabled = UserDefaults.standard.bool(forKey: "Aura_IsBassPunch")
+        if let bpGain = UserDefaults.standard.object(forKey: "Aura_BassPunchGain") as? Double {
+            self.bassPunchGain = bpGain
+        }
         self.isVocalBoostEnabled = UserDefaults.standard.bool(forKey: "Aura_IsVocalBoost")
+        if let vbGain = UserDefaults.standard.object(forKey: "Aura_VocalBoostGain") as? Double {
+            self.vocalBoostGain = vbGain
+        }
+        if let pIntens = UserDefaults.standard.object(forKey: "Aura_PresetIntensity") as? Double {
+            self.presetIntensity = pIntens
+        }
         
         if let at = UserDefaults.standard.object(forKey: "Aura_IsAtmos") as? Bool {
             self.isAtmosEnabled = at

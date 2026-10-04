@@ -460,6 +460,14 @@ public final class MultiSinkAudioDSP {
             sink.viperClarityFilterL.setHighShelf(frequency: 3500.0, sampleRate: 48000.0, gainDb: viper.viperClarityGain)
             sink.viperClarityFilterR.setHighShelf(frequency: 3500.0, sampleRate: 48000.0, gainDb: viper.viperClarityGain)
         }
+        if isBassPunch {
+            sink.bassFilterL.setPeaking(frequency: 100.0, sampleRate: 48000.0, gainDb: Float(dspMgr.bassPunchGain), q: 0.8)
+            sink.bassFilterR.setPeaking(frequency: 100.0, sampleRate: 48000.0, gainDb: Float(dspMgr.bassPunchGain), q: 0.8)
+        }
+        if isVocalBoost {
+            sink.vocalFilterL.setPeaking(frequency: 2800.0, sampleRate: 48000.0, gainDb: Float(dspMgr.vocalBoostGain), q: 1.2)
+            sink.vocalFilterR.setPeaking(frequency: 2800.0, sampleRate: 48000.0, gainDb: Float(dspMgr.vocalBoostGain), q: 1.2)
+        }
         
         let is1to1 = abs(ratio - 1.0) < 0.0001
         
