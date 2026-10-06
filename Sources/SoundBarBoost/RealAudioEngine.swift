@@ -688,7 +688,7 @@ public final class MultiSinkAudioDSP {
                 }
             }
             
-            // 5. Intelligent Loudness Maximizer & Headroom Boost (1.0x to 3.0x = +0dB to +9.5dB)
+            // 5. Intelligent Loudness Maximizer & Headroom Boost (1.0x to 5.0x = +0dB to +14dB)
             let boostedL = rawL * boost
             let boostedR = rawR * boost
             

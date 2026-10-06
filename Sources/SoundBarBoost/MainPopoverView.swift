@@ -836,12 +836,12 @@ public struct MainPopoverView: View {
         }
     }
     
-    // MARK: - Section 03: Sound Booster & Overdrive (100% - 300%)
+    // MARK: - Section 03: Sound Booster & Overdrive (100% - 500%)
     private var soundBoosterSection: some View {
         let pct = dsp.boostPercentage
         let isOverdrive = dsp.boostMultiplier > 1.01
         let boostDb = isOverdrive ? String(format: "+%.1f dB", 20.0 * log10(dsp.boostMultiplier)) : "0.0 dB (clean)"
-        let meterColor = pct > 250 ? TermTheme.red : (pct > 190 ? TermTheme.amber : (pct > 140 ? TermTheme.greenBright : TermTheme.cyan))
+        let meterColor = pct > 400 ? TermTheme.red : (pct > 280 ? TermTheme.amber : (pct > 180 ? TermTheme.greenBright : TermTheme.cyan))
         
         return TermCard(title: "03: SOUND BOOSTER / PREAMP", badge: "\(pct)%") {
             VStack(alignment: .leading, spacing: 6) {
@@ -852,14 +852,14 @@ public struct MainPopoverView: View {
                     
                     Spacer()
                     
-                    Text(renderAsciiBar(value: dsp.boostMultiplier, maxValue: 3.0, width: 18))
+                    Text(renderAsciiBar(value: dsp.boostMultiplier, maxValue: 5.0, width: 18))
                         .font(.system(size: 11, weight: .regular, design: .monospaced))
                         .foregroundColor(meterColor)
                 }
                 
                 Slider(
                     value: $dsp.boostMultiplier,
-                    in: 1.0...3.0,
+                    in: 1.0...5.0,
                     step: 0.05
                 )
                 .accentColor(meterColor)
@@ -868,17 +868,17 @@ public struct MainPopoverView: View {
                     TermButton(title: "100%", isActive: abs(dsp.boostMultiplier - 1.0) < 0.02, color: TermTheme.cyan) {
                         dsp.boostMultiplier = 1.0
                     }
-                    TermButton(title: "150%", isActive: abs(dsp.boostMultiplier - 1.50) < 0.02, color: TermTheme.cyan) {
-                        dsp.boostMultiplier = 1.50
-                    }
                     TermButton(title: "200%", isActive: abs(dsp.boostMultiplier - 2.00) < 0.02, color: TermTheme.greenBright) {
                         dsp.boostMultiplier = 2.00
                     }
-                    TermButton(title: "250%", isActive: abs(dsp.boostMultiplier - 2.50) < 0.02, color: TermTheme.amber) {
-                        dsp.boostMultiplier = 2.50
-                    }
-                    TermButton(title: "300%", isActive: abs(dsp.boostMultiplier - 3.00) < 0.02, color: TermTheme.red) {
+                    TermButton(title: "300%", isActive: abs(dsp.boostMultiplier - 3.00) < 0.02, color: TermTheme.amber) {
                         dsp.boostMultiplier = 3.00
+                    }
+                    TermButton(title: "400%", isActive: abs(dsp.boostMultiplier - 4.00) < 0.02, color: TermTheme.amber) {
+                        dsp.boostMultiplier = 4.00
+                    }
+                    TermButton(title: "500%", isActive: abs(dsp.boostMultiplier - 5.00) < 0.02, color: TermTheme.red) {
+                        dsp.boostMultiplier = 5.00
                     }
                 }
             }
