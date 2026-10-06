@@ -14,7 +14,9 @@ public struct AudioDevice: Identifiable, Hashable {
     
     public var iconName: String {
         let lower = name.lowercased()
-        if lower.contains("airpods max") {
+        if lower.contains("микрофон") || lower.contains("mic") {
+            return "mic.fill"
+        } else if lower.contains("airpods max") {
             return "airpodsmax"
         } else if lower.contains("airpods pro") {
             return "airpodspro"
@@ -95,6 +97,21 @@ public class AudioDeviceManager: ObservableObject {
     @Published public var selectedSpatialDeviceID: AudioObjectID = 0
     @Published public var isMuted: Bool = false
     
+    // Studio Microphone Guard & Input Device Management
+    @Published public var inputDevices: [AudioDevice] = []
+    @Published public var currentInputDeviceID: AudioObjectID = 0
+    @Published public var currentInputDeviceName: String = ""
+    @Published public var currentInputSampleRate: Double = 48000.0
+    @Published public var isMicGuardEnabled: Bool = UserDefaults.standard.object(forKey: "AuraSound_MicGuardEnabled") == nil ? true : UserDefaults.standard.bool(forKey: "AuraSound_MicGuardEnabled") {
+        didSet {
+            UserDefaults.standard.set(isMicGuardEnabled, forKey: "AuraSound_MicGuardEnabled")
+            if isMicGuardEnabled {
+                enforceStudioMicrophoneIfNeeded()
+            }
+        }
+    }
+    @Published public var inputVolume: Float = 1.0
+    
     public init() {
         refreshDevices()
         setupListeners()
@@ -142,31 +159,49 @@ public class AudioDeviceManager: ObservableObject {
         guard status == noErr else { return }
         
         let defaultOutputID = getDefaultOutputDeviceID()
+        let defaultInputID = getDefaultInputDeviceID()
         var devices: [AudioDevice] = []
+        var inDevices: [AudioDevice] = []
         
         for devID in deviceIDs {
+            let name = getDeviceName(deviceID: devID)
+            if name.contains("BlackHole") || name.contains("Background Music") {
+                continue
+            }
+            
+            let transport = getDeviceTransportType(deviceID: devID)
+            let lowerName = name.lowercased()
+            let uid = getDeviceUID(deviceID: devID)
+            
+            // Output devices
             if hasOutputStreams(deviceID: devID) {
-                let name = getDeviceName(deviceID: devID)
-                if name.contains("BlackHole") || name.contains("Background Music") {
-                    continue
-                }
-                
-                let transport = getDeviceTransportType(deviceID: devID)
-                let lowerName = name.lowercased()
-                
                 // Exclude HDMI, DisplayPort, and Monitor display audio
-                if transport == kAudioDeviceTransportTypeHDMI ||
-                   transport == kAudioDeviceTransportTypeDisplayPort ||
-                   lowerName.contains("hdmi") ||
-                   lowerName.contains("displayport") ||
-                   lowerName.contains("monitor") {
-                    continue
+                if !(transport == kAudioDeviceTransportTypeHDMI ||
+                     transport == kAudioDeviceTransportTypeDisplayPort ||
+                     lowerName.contains("hdmi") ||
+                     lowerName.contains("displayport") ||
+                     lowerName.contains("monitor")) {
+                    let vol = getDeviceVolume(deviceID: devID)
+                    let muted = getDeviceIsMuted(deviceID: devID)
+                    let isDef = (devID == defaultOutputID)
+                    
+                    let dev = AudioDevice(
+                        id: devID,
+                        name: name,
+                        uid: uid,
+                        transportType: transport,
+                        isDefault: isDef,
+                        volume: vol,
+                        isMuted: muted
+                    )
+                    devices.append(dev)
                 }
-                
-                let uid = getDeviceUID(deviceID: devID)
-                let vol = getDeviceVolume(deviceID: devID)
-                let muted = getDeviceIsMuted(deviceID: devID)
-                let isDef = (devID == defaultOutputID)
+            }
+            
+            // Input devices (microphones)
+            if hasInputStreams(deviceID: devID) {
+                let vol = getInputVolume(deviceID: devID)
+                let isDef = (devID == defaultInputID)
                 
                 let dev = AudioDevice(
                     id: devID,
@@ -175,14 +210,19 @@ public class AudioDeviceManager: ObservableObject {
                     transportType: transport,
                     isDefault: isDef,
                     volume: vol,
-                    isMuted: muted
+                    isMuted: false
                 )
-                devices.append(dev)
+                inDevices.append(dev)
             }
         }
         
         let updateBlock = {
             self.outputDevices = devices
+            self.inputDevices = inDevices
+            self.updateCurrentInputDeviceInfo()
+            if self.isMicGuardEnabled {
+                self.enforceStudioMicrophoneIfNeeded()
+            }
             
             // Clean up any previously selected HDMI / monitor devices
             let validIDs = Set(devices.map { $0.id })
@@ -278,6 +318,24 @@ public class AudioDeviceManager: ObservableObject {
             DispatchQueue.main
         ) { [weak self] _, _ in
             self?.refreshDevices()
+        }
+        
+        // Listen for default input device changes to guard studio mic quality
+        var defaultInputAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        AudioObjectAddPropertyListenerBlock(
+            AudioObjectID(kAudioObjectSystemObject),
+            &defaultInputAddress,
+            DispatchQueue.main
+        ) { [weak self] _, _ in
+            guard let self = self else { return }
+            self.updateCurrentInputDeviceInfo()
+            if self.isMicGuardEnabled {
+                self.enforceStudioMicrophoneIfNeeded()
+            }
         }
         
         ensureBlackHoleUnmuted()
@@ -656,5 +714,163 @@ public class AudioDeviceManager: ObservableObject {
             return isMuted != 0
         }
         return false
+    }
+    
+    // MARK: - Input Device & Studio Microphone Guard Methods
+    
+    public func updateCurrentInputDeviceInfo() {
+        let currentID = getDefaultInputDeviceID()
+        self.currentInputDeviceID = currentID
+        self.currentInputDeviceName = getDeviceName(deviceID: currentID)
+        self.currentInputSampleRate = getDeviceSampleRate(deviceID: currentID)
+        self.inputVolume = getInputVolume(deviceID: currentID)
+        
+        for i in 0..<self.inputDevices.count {
+            self.inputDevices[i].isDefault = (self.inputDevices[i].id == currentID)
+        }
+    }
+    
+    public func getDefaultInputDeviceID() -> AudioObjectID {
+        var defaultID = AudioObjectID(0)
+        var propertySize = UInt32(MemoryLayout<AudioObjectID>.size)
+        var propertyAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &propertyAddress,
+            0,
+            nil,
+            &propertySize,
+            &defaultID
+        )
+        return defaultID
+    }
+    
+    public func setDefaultInputDevice(deviceID: AudioObjectID) {
+        guard deviceID != 0 else { return }
+        var devID = deviceID
+        let propertySize = UInt32(MemoryLayout<AudioObjectID>.size)
+        var propertyAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        let status = AudioObjectSetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &propertyAddress,
+            0,
+            nil,
+            propertySize,
+            &devID
+        )
+        if status == noErr {
+            updateCurrentInputDeviceInfo()
+        }
+    }
+    
+    public func hasInputStreams(deviceID: AudioObjectID) -> Bool {
+        var propertyAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreams,
+            mScope: kAudioDevicePropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var dataSize: UInt32 = 0
+        let status = AudioObjectGetPropertyDataSize(deviceID, &propertyAddress, 0, nil, &dataSize)
+        return (status == noErr && dataSize > 0)
+    }
+    
+    public func getDeviceSampleRate(deviceID: AudioObjectID) -> Double {
+        var propertyAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyNominalSampleRate,
+            mScope: kAudioDevicePropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var sampleRate: Float64 = 0.0
+        var size = UInt32(MemoryLayout<Float64>.size)
+        var status = AudioObjectGetPropertyData(deviceID, &propertyAddress, 0, nil, &size, &sampleRate)
+        if status == noErr && sampleRate > 0 {
+            return sampleRate
+        }
+        propertyAddress.mScope = kAudioObjectPropertyScopeGlobal
+        status = AudioObjectGetPropertyData(deviceID, &propertyAddress, 0, nil, &size, &sampleRate)
+        if status == noErr && sampleRate > 0 {
+            return sampleRate
+        }
+        return 48000.0
+    }
+    
+    public func findBuiltInMicrophone() -> AudioObjectID? {
+        for dev in inputDevices {
+            let lower = dev.name.lowercased()
+            if dev.transportType == kAudioDeviceTransportTypeBuiltIn ||
+               lower.contains("macbook") ||
+               lower.contains("встроен") ||
+               lower.contains("микрофон macbook") ||
+               lower.contains("internal mic") ||
+               lower.contains("built-in") {
+                return dev.id
+            }
+        }
+        return inputDevices.first(where: { getDeviceSampleRate(deviceID: $0.id) >= 44100.0 })?.id
+    }
+    
+    public func restoreStudioMicrophone() {
+        if let studioID = findBuiltInMicrophone() {
+            setDefaultInputDevice(deviceID: studioID)
+            isMicGuardEnabled = true
+        }
+    }
+    
+    public func enforceStudioMicrophoneIfNeeded() {
+        guard isMicGuardEnabled else { return }
+        let currentID = getDefaultInputDeviceID()
+        let currentSR = getDeviceSampleRate(deviceID: currentID)
+        let currentName = getDeviceName(deviceID: currentID).lowercased()
+        
+        let isLowQuality = currentSR < 32000.0
+        let isBluetooth = getDeviceTransportType(deviceID: currentID) == kAudioDeviceTransportTypeBluetooth ||
+                          getDeviceTransportType(deviceID: currentID) == kAudioDeviceTransportTypeBluetoothLE ||
+                          currentName.contains("rockbox")
+        
+        if isLowQuality || isBluetooth {
+            if let studioMicID = findBuiltInMicrophone(), studioMicID != currentID {
+                setDefaultInputDevice(deviceID: studioMicID)
+            }
+        }
+    }
+    
+    public func getInputVolume(deviceID: AudioObjectID) -> Float {
+        for channel: UInt32 in [kAudioObjectPropertyElementMain, 0, 1] {
+            var propertyAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyVolumeScalar,
+                mScope: kAudioDevicePropertyScopeInput,
+                mElement: channel
+            )
+            var volume: Float32 = 1.0
+            var propertySize = UInt32(MemoryLayout<Float32>.size)
+            let status = AudioObjectGetPropertyData(deviceID, &propertyAddress, 0, nil, &propertySize, &volume)
+            if status == noErr {
+                return volume
+            }
+        }
+        return 1.0
+    }
+    
+    public func setInputVolume(deviceID: AudioObjectID, volume: Float) {
+        let clamped = max(0.0, min(1.0, volume))
+        for channel: UInt32 in [kAudioObjectPropertyElementMain, 0, 1] {
+            var propertyAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyVolumeScalar,
+                mScope: kAudioDevicePropertyScopeInput,
+                mElement: channel
+            )
+            var vol = clamped
+            let propertySize = UInt32(MemoryLayout<Float32>.size)
+            AudioObjectSetPropertyData(deviceID, &propertyAddress, 0, nil, propertySize, &vol)
+        }
+        self.inputVolume = clamped
     }
 }

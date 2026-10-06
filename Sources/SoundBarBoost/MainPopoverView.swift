@@ -334,6 +334,8 @@ public struct MainPopoverView: View {
                     
                     soundBoosterSection
                     
+                    studioMicrophoneGuardSection
+                    
                     dolbyAtmosSpatialSection
                     
                     viperEngineSection
@@ -885,13 +887,130 @@ public struct MainPopoverView: View {
         }
     }
     
-    // MARK: - Section 03: Dolby Atmos 3D Soundstage & Positioning
+    // MARK: - Section 04: Studio Microphone Guard (HD 48kHz)
+    private var studioMicrophoneGuardSection: some View {
+        let isStudioHD = devManager.currentInputSampleRate >= 44100.0
+        let sampleRateKhz = String(format: "%.1f", devManager.currentInputSampleRate / 1000.0)
+        let statusBadge = isStudioHD ? "STUDIO: \(sampleRateKhz)kHz" : "TELEPHONE: \(sampleRateKhz)kHz"
+        let statusColor = isStudioHD ? TermTheme.greenBright : TermTheme.red
+        let micName = devManager.currentInputDeviceName.isEmpty ? "MacBook Microphone" : devManager.currentInputDeviceName
+        
+        return TermCard(title: "04: STUDIO MICROPHONE GUARD", badge: statusBadge) {
+            VStack(alignment: .leading, spacing: 8) {
+                // Guard Toggle & Quick Restore Button
+                HStack(spacing: 6) {
+                    TermButton(
+                        title: devManager.isMicGuardEnabled ? "MIC GUARD: ACTIVE" : "MIC GUARD: OFF",
+                        isActive: devManager.isMicGuardEnabled,
+                        color: devManager.isMicGuardEnabled ? TermTheme.greenBright : TermTheme.dimText
+                    ) {
+                        devManager.isMicGuardEnabled.toggle()
+                    }
+                    
+                    Spacer()
+                    
+                    TermButton(
+                        title: "RESTORE 48kHz MACBOOK MIC",
+                        isActive: isStudioHD,
+                        color: isStudioHD ? TermTheme.green : TermTheme.cyan
+                    ) {
+                        devManager.restoreStudioMicrophone()
+                    }
+                }
+                
+                // Mic Quality Status Card
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack {
+                        Image(systemName: isStudioHD ? "mic.fill" : "mic.slash.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(statusColor)
+                        
+                        Text(micName.uppercased())
+                            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+                            .foregroundColor(statusColor)
+                            .lineLimit(1)
+                        
+                        Spacer()
+                        
+                        Text(isStudioHD ? "[ 48.0 kHz: STUDIO HD ]" : "[ 8.0 kHz: SCO PHONE QUALITY! ]")
+                            .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                            .foregroundColor(statusColor)
+                    }
+                    
+                    if !isStudioHD {
+                        Text("WARN: Bluetooth SCO hands-free profile degrades microphone to 8 kHz telephone quality. Telegram video messages sound muffled and distorted. Click [RESTORE 48kHz MACBOOK MIC] to restore studio sound.")
+                            .font(.system(size: 9, weight: .regular, design: .monospaced))
+                            .foregroundColor(TermTheme.red)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text("Active input locked to 48 kHz 24-bit MacBook studio beamforming microphone. Telegram video messages and voice notes record in pristine clarity.")
+                            .font(.system(size: 9, weight: .regular, design: .monospaced))
+                            .foregroundColor(TermTheme.green)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(6)
+                .background(Color.black.opacity(0.35))
+                .overlay(RoundedRectangle(cornerRadius: 3).stroke(statusColor.opacity(0.6), lineWidth: 1))
+                
+                // Input Device Selection Pills
+                if !devManager.inputDevices.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("AVAILABLE INPUT DEVICES:")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(TermTheme.dimText)
+                        
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 5) {
+                                ForEach(devManager.inputDevices) { dev in
+                                    let isCur = (dev.id == devManager.currentInputDeviceID)
+                                    let devSR = devManager.getDeviceSampleRate(deviceID: dev.id)
+                                    let srKhz = Int(devSR / 1000.0)
+                                    let isDevHD = devSR >= 44100.0
+                                    let color = isCur ? (isDevHD ? TermTheme.greenBright : TermTheme.red) : TermTheme.dimText
+                                    
+                                    TermButton(
+                                        title: "\(dev.shortName.uppercased()) (\(srKhz)k)",
+                                        isActive: isCur,
+                                        color: color
+                                    ) {
+                                        devManager.setDefaultInputDevice(deviceID: dev.id)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+                
+                // Microphone Sensitivity / Gain Slider
+                HStack {
+                    Text("MIC SENSITIVITY: \(Int(devManager.inputVolume * 100))%")
+                        .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                        .foregroundColor(TermTheme.green)
+                    Spacer()
+                    Slider(
+                        value: Binding(
+                            get: { devManager.inputVolume },
+                            set: { devManager.setInputVolume(deviceID: devManager.currentInputDeviceID, volume: $0) }
+                        ),
+                        in: 0.0...1.0,
+                        step: 0.05
+                    )
+                    .frame(width: 170)
+                    .accentColor(TermTheme.green)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Section 05: Dolby Atmos 3D Soundstage & Positioning
     private var dolbyAtmosSpatialSection: some View {
         let activeID = devManager.selectedSpatialDeviceID != 0 ? devManager.selectedSpatialDeviceID : (devManager.outputDevices.first?.id ?? 0)
         let activeDevice = devManager.outputDevices.first { $0.id == activeID } ?? devManager.outputDevices.first
         
         return TermCard(
-            title: "03: DOLBY ATMOS 3D SOUNDSTAGE",
+            title: "05: DOLBY ATMOS 3D SOUNDSTAGE",
             badge: dsp.isAtmosEnabled ? "ATMOS: ON" : "BYPASS"
         ) {
             VStack(alignment: .leading, spacing: 8) {
@@ -1214,10 +1333,10 @@ public struct MainPopoverView: View {
         .overlay(RoundedRectangle(cornerRadius: 3).stroke(TermTheme.borderSubtle, lineWidth: 1))
     }
     
-    // MARK: - Section 04: ViPER4Android & JamesDSP Engine
+    // MARK: - Section 06: ViPER4Android & JamesDSP Engine
     private var viperEngineSection: some View {
         TermCard(
-            title: "04: VIPER4ANDROID & JAMESDSP ENGINE",
+            title: "06: VIPER4ANDROID & JAMESDSP ENGINE",
             badge: viper.isViperEnabled ? "VIPER: ON" : "BYPASS"
         ) {
             VStack(alignment: .leading, spacing: 8) {
@@ -1385,9 +1504,9 @@ public struct MainPopoverView: View {
         .overlay(RoundedRectangle(cornerRadius: 3).stroke(TermTheme.borderSubtle, lineWidth: 1))
     }
     
-    // MARK: - Section 05: DSP Processors & Flags
+    // MARK: - Section 07: DSP Processors & Flags
     private var dspModulesSection: some View {
-        TermCard(title: "05: HARDWARE DSP MODULES") {
+        TermCard(title: "07: HARDWARE DSP MODULES") {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     dspToggleButton(
@@ -1472,9 +1591,9 @@ public struct MainPopoverView: View {
         .buttonStyle(.plain)
     }
     
-    // MARK: - Section 06: 10-Band Graphic Equalizer (Interactive ASCII Matrix)
+    // MARK: - Section 08: 10-Band Graphic Equalizer (Interactive ASCII Matrix)
     private var equalizerSection: some View {
-        TermCard(title: "06: GRAPHIC EQUALIZER (10-BAND)", badge: dsp.selectedPreset.name.uppercased()) {
+        TermCard(title: "08: GRAPHIC EQUALIZER (10-BAND)", badge: dsp.selectedPreset.name.uppercased()) {
             VStack(alignment: .leading, spacing: 6) {
                 eqPresetBar
                 eqPresetIntensityBar
